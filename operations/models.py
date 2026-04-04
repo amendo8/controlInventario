@@ -40,7 +40,7 @@ class DetalleSolicitud(models.Model):
         return f"{self.cantidad} x {self.parte.nombre}"
 
 class Envio(models.Model):
-    TIPOS = (('SUSTITUTO', 'Ida'), ('RETORNO', 'Vuelta'))
+    TIPOS = (('DESPACHO', 'Despacho al técnico'), ('RETORNO', 'Retorno al almacén'))
     
     solicitud = models.ForeignKey(Solicitud, on_delete=models.CASCADE, related_name='envios')
     tipo = models.CharField(max_length=20, choices=TIPOS)
