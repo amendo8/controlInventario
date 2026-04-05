@@ -20,14 +20,11 @@ class Solicitud(models.Model):
 
     def clean(self):
         if self.estado == 'CERRADA':
-            # Verificamos que CADA parte pedida tenga su correspondiente envío de retorno
-            partes_pedidas = self.detalles.count()
+            # Requiere al menos un retorno registrado antes de cerrar la solicitud.
             retornos_registrados = self.envios.filter(tipo='RETORNO').count()
-            
-            if retornos_registrados < partes_pedidas:
+            if retornos_registrados == 0:
                 raise ValidationError(
-                    f"Faltan retornos. Se pidieron {partes_pedidas} partes, "
-                    f"pero solo se han registrado {retornos_registrados} guías de retorno."
+                    "Debe registrar al menos un envío de retorno antes de cerrar la solicitud."
                 )
 
 class DetalleSolicitud(models.Model):

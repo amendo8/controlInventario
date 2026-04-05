@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Solicitudes - Sistema de Inventario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <header class="bg-blue-600 text-white p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+            <h1 class="text-xl font-bold">Gestión de Solicitudes</h1>
+            <p class="text-sm text-blue-100">Usuario: {{ user.username }} ({{ user.get_rol_display }})</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'despacho' %}" class="bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700">Volver al Dashboard</a>
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Cerrar Sesión</button>
+            </form>
+        </div>
+    </header>
+
+    <main class="p-8">
+        {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                    <div class="rounded-lg p-4 {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="mx-auto w-[60%] max-w-[90%]">
+            <h2 class="text-2xl font-bold mb-4">Solicitudes Existentes</h2>
+            {% if solicitudes %}
+                <div class="space-y-4">
+                    {% for solicitud in solicitudes %}
+                        <div class="bg-white p-6 rounded-lg shadow">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold">{{ solicitud.ticket }}</h3>
+                                    <p class="text-sm text-gray-600">Técnico: {{ solicitud.tecnico }} | Ubicación: {{ solicitud.ubicacion }}</p>
+                                    <p class="text-sm text-gray-600">Fecha: {{ solicitud.fecha|date:'d/m/Y H:i' }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="px-3 py-1 rounded-full text-sm {% if solicitud.estado == 'PENDIENTE' %}bg-yellow-100 text-yellow-800{% elif solicitud.estado == 'APROBADA' %}bg-blue-100 text-blue-800{% elif solicitud.estado == 'DESPACHADA' %}bg-purple-100 text-purple-800{% elif solicitud.estado == 'RESUELTO' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                                        {{ solicitud.estado }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <h4 class="font-medium mb-2">Partes solicitadas:</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    {% for detalle in solicitud.detalles %}
+                                        <span class="bg-blue-100 text-blue-700 text-sm px-3 py-1 rounded-full">{{ detalle.parte }} ({{ detalle.cantidad }})</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="mt-4 flex gap-4 flex-wrap">
+                                {% if solicitud.estado_value != 'CERRADA' %}
+                                    <form method="post" class="flex flex-wrap items-end gap-2 w-full">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="add_partes" value="1">
+                                        <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
+                                        <div class="flex-1 min-w-[200px]">
+                                            <label class="block text-sm font-medium text-gray-700">Agregar Parte</label>
+                                            <select name="parte" required class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                                <option value="">Seleccionar parte</option>
+                                                {% for parte in partes_disponibles %}
+                                                    <option value="{{ parte.id }}">{{ parte.nombre }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="w-32 min-w-[120px]">
+                                            <label class="block text-sm font-medium text-gray-700">Cantidad</label>
+                                            <input type="number" name="cantidad" min="1" required class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                                        </div>
+                                        <div class="self-end ml-auto">
+                                            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded text-sm hover:bg-green-600">Agregar parte</button>
+                                        </div>
+                                    </form>
+                                {% endif %}
+                                {% if solicitud.next_states %}
+                                    <form method="post" class="flex gap-4 items-end" id="status-form-{{ solicitud.id }}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="change_status" value="1">
+                                        <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
+                                        <div>
+                                            <label for="id_estado_{{ solicitud.id }}" class="block text-sm font-medium text-gray-700">Cambiar Estatus</label>
+                                            <select name="estado" id="id_estado_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleEnvioFields({{ solicitud.id }})">
+                                                <option value="{{ solicitud.estado_value }}" selected>{{ solicitud.estado }}</option>
+                                                {% for value, display in solicitud.next_states %}
+                                                    <option value="{{ value }}">{{ display }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div id="envio-fields-{{ solicitud.id }}" class="hidden gap-4 items-end">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">Guía de Courier</label>
+                                                <input type="text" name="guia_courier" id="guia_courier_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Número de guía">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">Empresa</label>
+                                                <input type="text" name="empresa" id="empresa_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Empresa de courier">
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Actualizar Estatus</button>
+                                    </form>
+                                {% else %}
+                                    <p class="text-sm text-gray-500">Esta solicitud está cerrada y no puede cambiar de estatus.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="bg-white p-6 rounded-lg shadow text-center">
+                    <p class="text-gray-600">No hay solicitudes registradas.</p>
+                </div>
+            {% endif %}
+        </div>
+
+
+        <div class="mx-auto w-[60%] max-w-[90%] mb-8">
+            <h2 class="text-2xl font-bold mb-4">Agregar Nueva Solicitud</h2>
+            <form method="post" class="bg-white p-6 rounded-lg shadow">
+                {% csrf_token %}
+                <input type="hidden" name="add_solicitud" value="1">
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>{{ solicitud_form.ticket_crm.label_tag }}{{ solicitud_form.ticket_crm }}</div>
+                    <div>{{ solicitud_form.tecnico.label_tag }}{{ solicitud_form.tecnico }}</div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-lg font-semibold mb-2">Detalles de Partes</h3>
+                    {{ detalle_formset.management_form }}
+                    <div id="detalle-forms">
+                        {% for form in detalle_formset %}
+                            <div class="grid gap-4 md:grid-cols-3 mb-4 p-4 border rounded">
+                                <div>{{ form.parte.label_tag }}{{ form.parte }}</div>
+                                <div>{{ form.cantidad.label_tag }}{{ form.cantidad }}</div>
+                                <div>{{ form.DELETE.label_tag }}{{ form.DELETE }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">Crear Solicitud</button>
+                </div>
+            </form>
+        </div>
+
+    </main>
+
+    <script>
+        function addDetalleForm() {
+            const container = document.getElementById('detalle-forms');
+            const totalForms = document.querySelector('input[name="detalle-TOTAL_FORMS"]');
+            const newIndex = parseInt(totalForms.value);
+            const newForm = `
+                <div class="grid gap-4 md:grid-cols-3 mb-4 p-4 border rounded">
+                    <div><label>Parte:</label><select name="detalle-${newIndex}-parte" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">---------</option></select></div>
+                    <div><label>Cantidad:</label><input type="number" name="detalle-${newIndex}-cantidad" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                    <div><label>Eliminar:</label><input type="checkbox" name="detalle-${newIndex}-DELETE"></div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', newForm);
+            totalForms.value = newIndex + 1;
+        }
+
+        function toggleEnvioFields(solicitudId) {
+            const select = document.getElementById(`id_estado_${solicitudId}`);
+            const envioFields = document.getElementById(`envio-fields-${solicitudId}`);
+            const guiaInput = document.getElementById(`guia_courier_${solicitudId}`);
+            const empresaInput = document.getElementById(`empresa_${solicitudId}`);
+            if (select.value === 'RESUELTO') {
+                envioFields.classList.remove('hidden');
+                envioFields.classList.add('flex');
+                guiaInput.required = true;
+                empresaInput.required = true;
+            } else {
+                envioFields.classList.add('hidden');
+                envioFields.classList.remove('flex');
+                guiaInput.required = false;
+                empresaInput.required = false;
+                guiaInput.value = '';
+                empresaInput.value = '';
+            }
+        }
+    </script>
+</body>
+</html>
