@@ -17,6 +17,7 @@ class Equipo(models.Model):
     modelo = models.CharField(max_length=100)
     marca = models.CharField(max_length=100)
     linea_negocio = models.ForeignKey(LineaNegocio, on_delete=models.PROTECT, related_name='equipos',default=1)
+    imagen = models.ImageField(upload_to='equipos/', null=True, blank=True)
 
     def __str__(self):
         return f"{self.linea_negocio.nombre} {self.marca} {self.modelo}"
@@ -26,7 +27,7 @@ class Parte(models.Model):
     sku = models.CharField(max_length=50, unique=True)
     descripcion = models.TextField(blank=True)
     stock_minimo = models.PositiveIntegerField(default=5)
-    
+    imagen = models.ImageField(upload_to='partes/', null=True, blank=True)
     # Observación 1: Una parte sirve para muchos equipos
     equipos_compatibles = models.ManyToManyField(
         Equipo, 

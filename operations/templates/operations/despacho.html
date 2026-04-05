@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Inventario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <header class="bg-blue-600 text-white p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div>
+            <h1 class="text-xl font-bold">Bienvenido al Sistema de Inventario</h1>
+            <p class="text-sm text-blue-100">Usuario: {{ user.username }} ({{ user.get_rol_display }})</p>
+        </div>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Cerrar Sesión</button>
+        </form>
+    </header>
+    <main class="p-8">
+        <div class="mb-6">
+            <h2 class="text-2xl font-bold mb-2">Dashboard de Operaciones</h2>
+            <p class="text-gray-600">Haz clic en una fila para ver el detalle completo de la solicitud en una ventana emergente.</p>
+        </div>
+
+        {% if solicitudes %}
+            <div class="overflow-x-auto bg-white rounded-lg shadow">
+                <table class="min-w-full text-left">
+                    <thead class="bg-gray-100 text-gray-700">
+                        <tr>
+                            <th class="px-4 py-3">Ticket</th>
+                            <th class="px-4 py-3">Partes solicitadas</th>
+                            <th class="px-4 py-3">Técnico</th>
+                            <th class="px-4 py-3">Ubicación</th>
+                            <th class="px-4 py-3">Fecha solicitud</th>
+                            <th class="px-4 py-3">Días pendientes</th>
+                            <th class="px-4 py-3">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for solicitud in solicitudes %}
+                            <tr class="border-b last:border-b-0 hover:bg-gray-50 cursor-pointer" onclick="openModal('modal-{{ forloop.counter }}')">
+                                <td class="px-4 py-3 font-semibold">{{ solicitud.ticket }}</td>
+                                <td class="px-4 py-3">
+                                    {% for parte in solicitud.partes %}
+                                        <span class="inline-block bg-blue-100 text-blue-700 text-sm px-2 py-1 rounded-full mr-1 mb-1">{{ parte.nombre }}</span>
+                                    {% empty %}
+                                        <span class="text-gray-500">Sin partes</span>
+                                    {% endfor %}
+                                </td>
+                                <td class="px-4 py-3">{{ solicitud.tecnico }}<br><span class="text-sm text-gray-500">{{ solicitud.rol }}</span></td>
+                                <td class="px-4 py-3">{{ solicitud.ubicacion }}</td>
+                                <td class="px-4 py-3">{{ solicitud.fecha|date:'d/m/Y H:i' }}</td>
+                                <td class="px-4 py-3">{{ solicitud.dias_pendientes }}</td>
+                                <td class="px-4 py-3">{{ solicitud.estado }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% for solicitud in solicitudes %}
+                <div id="modal-{{ forloop.counter }}" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/50 px-4 py-6">
+                    <div class="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-xl">
+                        <div class="flex items-center justify-between border-b px-6 py-4">
+                            <div>
+                                <h3 class="text-lg font-semibold">Detalle de Solicitud {{ solicitud.ticket }}</h3>
+                                <p class="text-sm text-gray-500">Solicitado por {{ solicitud.tecnico }} | {{ solicitud.ubicacion }}</p>
+                            </div>
+                            <button type="button" onclick="closeModal('modal-{{ forloop.counter }}')" class="rounded bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-200">Cerrar</button>
+                        </div>
+                        <div class="space-y-4 px-6 py-6">
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <div>
+                                    <p class="text-sm text-gray-500">Fecha de solicitud</p>
+                                    <p class="font-medium">{{ solicitud.fecha|date:'d/m/Y H:i' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Días pendientes</p>
+                                    <p class="font-medium">{{ solicitud.dias_pendientes }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Estado</p>
+                                    <p class="font-medium">{{ solicitud.estado }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Técnico</p>
+                                    <p class="font-medium">{{ solicitud.tecnico }}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500 mb-2">Partes solicitadas</p>
+                                <div class="space-y-2">
+                                    {% for parte in solicitud.partes %}
+                                        <div class="flex items-center justify-between rounded-lg border px-4 py-3">
+                                            <span class="font-medium">{{ parte.nombre }}</span>
+                                            <span class="text-sm text-gray-600">Cantidad: {{ parte.cantidad }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="bg-white rounded-lg shadow p-6 text-center">
+                <p class="text-gray-600">No hay solicitudes registradas por el momento.</p>
+            </div>
+        {% endif %}
+    </main>
+    <script>
+        function openModal(id) {
+            document.getElementById(id)?.classList.remove('hidden');
+            document.getElementById(id)?.classList.add('flex');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id)?.classList.remove('flex');
+            document.getElementById(id)?.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

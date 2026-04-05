@@ -11,6 +11,7 @@ class Inventario(models.Model):
     cant_disponible = models.PositiveIntegerField(default=0)
     cant_en_transito = models.PositiveIntegerField(default=0)
     cant_danada_por_recibir = models.PositiveIntegerField(default=0)
+    foto_factura = models.ImageField(upload_to='facturas/%Y/%m/', null=True, blank=True)
 
     class Meta:
         unique_together = ('parte', 'oficina')

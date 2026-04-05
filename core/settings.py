@@ -62,6 +62,9 @@ ROOT_URLCONF = 'core.urls'
 #Se utiliza un modelo de usuario personalizado
 AUTH_USER_MODEL = 'users.User'
 
+# Redirección después del logout
+LOGOUT_REDIRECT_URL = '/'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
