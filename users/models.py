@@ -38,6 +38,12 @@ class User(AbstractUser):
     rol = models.CharField(max_length=20, choices=ROLE_CHOICES, default=TECNICO)
     # Relacionamos al usuario con su base de operaciones
     oficina = models.ForeignKey('Oficina', on_delete=models.SET_NULL, null=True, blank=True)
+    direccion = models.CharField(max_length=255, blank=True, null=True)
+    email = models.EmailField(unique=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    foto = models.ImageField(upload_to='fotos_usuarios/', blank=True, null=True)
+
+    
 
     def __str__(self):
         return f"{self.username} - {self.get_rol_display()}"
