@@ -26,13 +26,13 @@ class User(AbstractUser):
     TECNICO = 'TECNICO'
     SUPERVISOR = 'SUPERVISOR'
     ALMACENISTA = 'ALMACENISTA'
-    ADMIN_PROCURA = 'ADMIN_PROCURA'
+    ADMIN_SISTEMA = 'ADMIN_SISTEMA'
     
     ROLE_CHOICES = [
         (TECNICO, 'Técnico'),
         (SUPERVISOR, 'Supervisor'),
         (ALMACENISTA, 'Almacenista'),
-        (ADMIN_PROCURA, 'Administrador de Procura'),
+        (ADMIN_SISTEMA, 'Administrador del Sistema'),
     ]
     
     rol = models.CharField(max_length=20, choices=ROLE_CHOICES, default=TECNICO)
@@ -41,9 +41,9 @@ class User(AbstractUser):
     direccion = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
     telefono = models.CharField(max_length=20, blank=True, null=True)
-    foto = models.ImageField(upload_to='fotos_usuarios/', blank=True, null=True)
+    foto = models.ImageField(upload_to='imagen/usuarios/',  blank=True, null=True)
 
-    
+
 
     def __str__(self):
         return f"{self.username} - {self.get_rol_display()}"
