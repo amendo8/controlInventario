@@ -81,7 +81,7 @@ def despacho(request):
 
 @login_required
 def gestion_solicitudes(request):
-    solicitudes = Solicitud.objects.select_related('tecnico', 'tecnico__oficina').prefetch_related('detalles__parte').exclude(estado='CERRADA').order_by('-fecha_creacion')
+    solicitudes = Solicitud.objects.select_related('tecnico', 'tecnico__oficina').prefetch_related('detalles__parte', 'envios').exclude(estado='CERRADA').order_by('-fecha_creacion')
     partes_disponibles = Parte.objects.all()
 
     solicitud_form = SolicitudForm()
@@ -148,6 +148,20 @@ def gestion_solicitudes(request):
             }
             for detalle in solicitud.detalles.all()
         ]
+        envios = [
+            {
+                'tipo': envio.get_tipo_display(),
+                'guia_courier': envio.guia_courier,
+                'empresa': envio.empresa,
+                'fecha_envio': envio.fecha_envio,
+            }
+            for envio in solicitud.envios.all()
+        ]
+        fecha_despacho = solicitud.envios.filter(tipo='salida').first()
+        if fecha_despacho:
+            fecha_despacho = fecha_despacho.fecha_envio
+        else:
+            fecha_despacho = None
         solicitudes_data.append({
             'id': solicitud.id,
             'ticket': solicitud.ticket_crm,
@@ -157,6 +171,8 @@ def gestion_solicitudes(request):
             'estado': solicitud.get_estado_display(),
             'estado_value': solicitud.estado,
             'detalles': detalles,
+            'envios': envios,
+            'fecha_despacho': fecha_despacho,
             'next_states': [(state, ESTADOS_DICT[state]) for state in TRANSITIONS[solicitud.estado]],
         })
 

@@ -43,6 +43,7 @@
                                     <h3 class="text-lg font-semibold">{{ solicitud.ticket }}</h3>
                                     <p class="text-sm text-gray-600">Técnico: {{ solicitud.tecnico }} | Ubicación: {{ solicitud.ubicacion }}</p>
                                     <p class="text-sm text-gray-600">Fecha: {{ solicitud.fecha|date:'d/m/Y H:i' }}</p>
+                                    <p class="text-sm text-gray-600">Fecha de Despacho: {% if solicitud.fecha_despacho %}{{ solicitud.fecha_despacho|date:'d/m/Y' }}{% else %}No disponible{% endif %}</p>
                                 </div>
                                 <div class="text-right">
                                     <span class="px-3 py-1 rounded-full text-sm {% if solicitud.estado == 'PENDIENTE' %}bg-yellow-100 text-yellow-800{% elif solicitud.estado == 'APROBADA' %}bg-blue-100 text-blue-800{% elif solicitud.estado == 'DESPACHADA' %}bg-purple-100 text-purple-800{% elif solicitud.estado == 'RESUELTO' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
@@ -58,6 +59,20 @@
                                     {% endfor %}
                                 </div>
                             </div>
+                            {% if solicitud.envios %}
+                                <div class="mb-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                    <h4 class="font-medium mb-2">Envíos registrados</h4>
+                                    <ul class="space-y-2 text-sm text-slate-700">
+                                        {% for envio in solicitud.envios %}
+                                            <li class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center bg-white p-3 rounded border border-slate-200">
+                                                <span><strong>{{ envio.tipo }}:</strong> {{ envio.guia_courier }}</span>
+                                                <span><strong>Empresa:</strong> {{ envio.empresa }}</span>
+                                                <span><strong>Fecha envío:</strong> {{ envio.fecha_envio|date:'d/m/Y' }}</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
                             <div class="mt-4 flex gap-4 flex-wrap">
                                 {% if solicitud.estado_value != 'CERRADA' %}
                                     <form method="post" class="flex flex-wrap items-end gap-2 w-full">
@@ -104,6 +119,10 @@
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700">Empresa</label>
                                                 <input type="text" name="empresa" id="empresa_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Empresa de courier">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700">Fecha de envío</label>
+                                                <input type="date" name="fecha_envio" id="fecha_envio_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             </div>
                                         </div>
                                         <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Actualizar Estatus</button>
@@ -174,18 +193,22 @@
             const envioFields = document.getElementById(`envio-fields-${solicitudId}`);
             const guiaInput = document.getElementById(`guia_courier_${solicitudId}`);
             const empresaInput = document.getElementById(`empresa_${solicitudId}`);
+            const fechaEnvioInput = document.getElementById(`fecha_envio_${solicitudId}`);
             if (select.value === 'RESUELTO') {
                 envioFields.classList.remove('hidden');
                 envioFields.classList.add('flex');
                 guiaInput.required = true;
                 empresaInput.required = true;
+                fechaEnvioInput.required = true;
             } else {
                 envioFields.classList.add('hidden');
                 envioFields.classList.remove('flex');
                 guiaInput.required = false;
                 empresaInput.required = false;
+                fechaEnvioInput.required = false;
                 guiaInput.value = '';
                 empresaInput.value = '';
+                fechaEnvioInput.value = '';
             }
         }
     </script>

@@ -43,6 +43,7 @@ class Envio(models.Model):
     tipo = models.CharField(max_length=20, choices=TIPOS)
     guia_courier = models.CharField(max_length=100)
     empresa = models.CharField(max_length=50)
+    fecha_envio = models.DateField(null=True, blank=True)
     # Si quieres ser muy específico, podrías ligar el envío a un DetalleSolicitud,
     # pero por ahora, lo ligamos a la Solicitud general para facilitar la logística.
     fecha = models.DateTimeField(auto_now_add=True)

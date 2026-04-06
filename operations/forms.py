@@ -33,8 +33,9 @@ class CambioEstatusForm(forms.ModelForm):
 class EnvioForm(forms.ModelForm):
     class Meta:
         model = Envio
-        fields = ['guia_courier', 'empresa']
+        fields = ['guia_courier', 'empresa', 'fecha_envio']
         widgets = {
             'guia_courier': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500', 'placeholder': 'Número de guía'}),
             'empresa': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500', 'placeholder': 'Empresa de courier'}),
+            'fecha_envio': forms.DateInput(attrs={'type': 'date', 'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'}),
         }
