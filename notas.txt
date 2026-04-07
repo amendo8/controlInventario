@@ -1,0 +1,14 @@
+Configuracion para BD de servytepy
+ESta mierda dio dolor de cabeza.
+
+""" 'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'serviexp_inventario',
+        'USER': 'serviexp_admin_inv',
+        'PASSWORD': 'E1-m1lagro!',
+        'HOST': '157.250.197.234',
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'connect_timeout': 60,  # Le damos 60 segundos para conectar
+        }"""
