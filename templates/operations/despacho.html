@@ -21,7 +21,7 @@
         <div class="flex gap-4 overflow-x-auto">
             <a href="{% url 'despacho' %}" class="whitespace-nowrap rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Dashboard</a>
             <a href="{% url 'gestion_solicitudes' %}" class="whitespace-nowrap rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300">Gestión Solicitudes</a>
-            <a href="/inventarios/" class="whitespace-nowrap rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300">Gestión Inventarios</a>
+            <a href="{% url 'gestion_solicitudes' %}" class="whitespace-nowrap rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300">Gestión Inventarios</a>
             <a href="/usuarios/" class="whitespace-nowrap rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300">Gestión Usuarios</a>
         </div>
     </nav>

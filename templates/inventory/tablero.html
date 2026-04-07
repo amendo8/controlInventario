@@ -1,0 +1,31 @@
+<h2>📊 Control de Inventario Real</h2>
+<table border="1" style="width:100%; text-align:left; border-collapse: collapse;">
+    <thead style="background-color: #f2f2f2;">
+        <tr>
+            <th>Parte / Repuesto</th>
+            <th>Ubicación (Oficina)</th>
+            <th>✅ Disponible</th>
+            <th>🚚 En Tránsito</th>
+            <th>⚠️ Dañado</th>
+            <th>📄 Factura</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td><strong>{{ item.parte.nombre }}</strong></td>
+            <td>{{ item.oficina.nombre }}</td>
+            <td style="color: green;">{{ item.cant_disponible }}</td>
+            <td style="color: blue;">{{ item.cant_en_transito }}</td>
+            <td style="color: red;">{{ item.cant_danada_por_recibir }}</td>
+            <td>
+                {% if item.foto_factura %}
+                    <a href="{{ item.foto_factura.url }}" target="_blank">Ver Foto</a>
+                {% else %}
+                    No cargada
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

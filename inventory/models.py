@@ -7,14 +7,28 @@ from django.dispatch import receiver
 
 class Inventario(models.Model):
     parte = models.ForeignKey('catalog.Parte', on_delete=models.CASCADE, related_name='stocks')
+    # Añadimos el serial aquí
+    serial = models.CharField(
+        max_length=100, 
+        unique=True,      # Esto evita que registres dos veces el mismo serial
+        null=True, 
+        blank=True, 
+        verbose_name="Número de Serial"
+    )
     oficina = models.ForeignKey('users.Oficina', on_delete=models.CASCADE)
-    cant_disponible = models.PositiveIntegerField(default=0)
+    cant_disponible = models.PositiveIntegerField(default=1)
     cant_en_transito = models.PositiveIntegerField(default=0)
     cant_danada_por_recibir = models.PositiveIntegerField(default=0)
-    foto_factura = models.ImageField(upload_to='facturas/%Y/%m/', null=True, blank=True)
+    foto_factura = models.ImageField(upload_to='imagen/inventory/%Y/%m/', null=True, blank=True)
 
     class Meta:
         unique_together = ('parte', 'oficina')
+
+    def save(self, *args, **kwargs):
+        # Lógica de negocio: Si tiene serial, la cantidad DEBE ser 1
+        if self.serial:
+            self.cant_disponible = 1
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.parte.nombre} en {self.oficina.nombre}"
