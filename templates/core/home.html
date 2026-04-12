@@ -3,11 +3,85 @@
  
 {% block content %}
 <div class="max-w-7xl mx-auto">
-        {% if user.is_authenticated %}
+    {% if user.is_authenticated %}
            
-        <h3>Bienvenido a mi sistema</h3>
-        
+        <h3>Bienvenido a mi sistema</h3>     
+            <div class="space-y-8">
+                <div class="flex justify-between items-end">
+                    <div>
+                        <h1 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">Panel de Control</h1>
+                        <p class="text-slate-500 font-medium small">Estado actual de ServiExpress Global</p>
+                    </div>
+                </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-blue-600">
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Stock Disponible</p>
+                        <p class="text-4xl font-black text-slate-900">{{ total_piezas }}</p>
+                        <p class="text-[10px] text-slate-400 mt-2 font-bold italic">Total en todas las oficinas</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-red-500">
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Alertas Críticas</p>
+                        <p class="text-4xl font-black {% if alertas_criticas > 0 %}text-red-600 animate-pulse{% else %}text-slate-900{% endif %}">
+                            {{ alertas_criticas }}
+                        </p>
+                        <p class="text-[10px] text-red-400 mt-2 font-bold italic uppercase">Bajo stock mínimo</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-amber-500">
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">En Tránsito</p>
+                        <p class="text-4xl font-black text-slate-900">{{ piezas_transito }}</p>
+                        <p class="text-[10px] text-slate-400 mt-2 font-bold italic">Pendientes por recibir</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+                    <div class="bg-slate-900 px-6 py-4 flex justify-between items-center">
+                        <h3 class="text-white font-bold text-sm uppercase tracking-wider">Movimientos Recientes (Kardex)</h3>
+                        <a href="#" class="text-blue-400 text-[10px] font-black hover:text-white transition uppercase">Ver Historial Completo</a>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200">
+                                    <th class="px-6 py-3 text-[10px] font-black text-slate-500 uppercase">Fecha</th>
+                                    <th class="px-6 py-3 text-[10px] font-black text-slate-500 uppercase">Parte</th>
+                                    <th class="px-6 py-3 text-[10px] font-black text-slate-500 uppercase">Tipo</th>
+                                    <th class="px-6 py-3 text-[10px] font-black text-slate-500 uppercase">Cant.</th>
+                                    <th class="px-6 py-3 text-[10px] font-black text-slate-500 uppercase">Saldo Nuevo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for mov in ultimos_movimientos %}
+                                <tr class="hover:bg-blue-50/50 transition">
+                                    <td class="px-6 py-4 text-xs font-medium text-slate-600">{{ mov.fecha|date:"d/m H:i" }}</td>
+                                    <td class="px-6 py-4">
+                                        <p class="text-xs font-bold text-slate-900">{{ mov.inventario.parte.nombre }}</p>
+                                        <p class="text-[9px] text-slate-400 font-bold uppercase">{{ mov.inventario.oficina.nombre }}</p>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        {% if mov.tipo == 'ENTRADA' %}
+                                            <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-[9px] font-black uppercase">Entrada</span>
+                                        {% elif mov.tipo == 'SALIDA' %}
+                                            <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-[9px] font-black uppercase">Salida</span>
+                                        {% else %}
+                                            <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-[9px] font-black uppercase">{{ mov.tipo }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-6 py-4 text-xs font-black text-slate-700">{{ mov.cantidad }}</td>
+                                    <td class="px-6 py-4 text-xs font-black text-blue-600">{{ mov.saldo_nuevo }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="px-6 py-10 text-center text-slate-400 text-xs italic">No hay movimientos registrados recientemente.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
     {% else %}
         <div class="flex flex-col items-center justify-center py-20">
             <h2 class="text-4xl font-black text-slate-900">Acceso Privado</h2>

@@ -1,11 +1,12 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
 from django.utils import timezone
 from django.contrib import messages
 
 from .models import Solicitud, DetalleSolicitud
 from .forms import SolicitudForm, DetalleSolicitudForm, DetalleSolicitudFormSet, CambioEstatusForm, EnvioForm
-from inventory.models import Inventario
+from inventory.models import Inventario, MovimientoKardex, AlertaInventario
 from catalog.models import Parte
 
 # Definir transiciones de estado
@@ -18,11 +19,31 @@ TRANSITIONS = {
     'CERRADA': [],
 }
 
-# Vista de inicio: muestra logo y formulario de login
+
+# Vista de home con KPIs y últimos movimientos del Kardex
+@login_required
 def home(request):
-    return render(request, 'core/home.html')
+    # 1. KPIs Principales
+    total_piezas = Inventario.objects.aggregate(total=Sum('cant_disponible'))['total'] or 0
+    alertas_criticas = AlertaInventario.objects.filter(leida=False, nivel='CRITICAL').count()
+    piezas_transito = Inventario.objects.aggregate(total=Sum('cant_en_transito'))['total'] or 0
+    
+    # 2. Últimos movimientos del Kardex para la tabla
+    ultimos_movimientos = MovimientoKardex.objects.select_related(
+        'inventario__parte', 'inventario__oficina', 'usuario'
+    ).order_by('-fecha')[:5]
+
+    context = {
+        'total_piezas': total_piezas,
+        'alertas_criticas': alertas_criticas,
+        'piezas_transito': piezas_transito,
+        'ultimos_movimientos': ultimos_movimientos,
+    }
+    
+    return render(request, 'core/home.html', context)
 
 
+# Vistas para Despacho de partes
 @login_required
 def despacho(request):
     solicitudes = Solicitud.objects.select_related('tecnico', 'tecnico__oficina').prefetch_related('detalles__parte').all().order_by('-fecha_creacion')
@@ -77,7 +98,7 @@ def despacho(request):
         'low_stock_count': sum(1 for item in inventario_items if item['disponible'] <= item['stock_minimo']),
         'total_solicitudes': solicitudes.count(),
     })
-
+# Vista para gestión de solicitudes (CRUD y cambio de estado)
 @login_required
 def gestion_solicitudes(request):
     solicitudes = Solicitud.objects.select_related('tecnico', 'tecnico__oficina').prefetch_related('detalles__parte', 'envios').exclude(estado='CERRADA').order_by('-fecha_creacion')
