@@ -22,7 +22,7 @@ TRANSITIONS = {
 def home(request):
     if request.user.is_authenticated:
         return redirect('despacho')
-    return render(request, 'operations/home.html')
+    return render(request, 'core/home.html')
 
 @login_required
 def despacho(request):

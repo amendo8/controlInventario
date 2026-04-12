@@ -1,0 +1,43 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="flex flex-col justify-center items-center py-12">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+        <h2 class="text-3xl font-extrabold text-slate-900 text-center mb-8">Ingreso ServiExpress</h2>
+        
+        <form method="post" action="{% url 'login' %}" class="space-y-6">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                    <p class="text-red-700 text-sm">Usuario o contraseña incorrectos.</p>
+                </div>
+            {% endif %}
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700">Usuario</label>
+                <input type="text" name="username" required 
+                       class="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-slate-700">Contraseña</label>
+                <input type="password" name="password" required 
+                       class="mt-1 block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+            </div>
+
+            <div class="flex flex-row gap-4">
+                <a href="{% url 'home' %}" 
+                   class="w-1/2 flex justify-center py-3 px-4 border border-slate-300 rounded-xl shadow-sm text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 focus:outline-none transition-all text-center">
+                    Cancelar
+                </a>
+
+                <button type="submit" 
+                        class="w-1/2 flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all transform active:scale-95">
+                    Entrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
