@@ -1,0 +1,49 @@
+{% block nav %}
+   <nav class="bg-slate-900 text-white shadow-xl">
+    <div class="max-w-7xl mx-auto px-4 h-20 flex flex-col justify-center">
+        
+        <div class="flex justify-between items-center">
+            <div class="flex flex-col">
+                <a href="{% url 'home' %}" class="font-black text-xl uppercase tracking-tighter leading-none hover:text-blue-400 transition">
+                    ServiExpress
+                </a>
+                
+                {% if user.is_authenticated %}
+                <div class="flex items-center space-x-3 mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <div class="flex items-center">
+                        <svg class="w-3 h-3 mr-1 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"></path>
+                        </svg>
+                        {{ user.username }}
+                    </div>
+                    <span class="text-slate-700">|</span>
+                    <div class="flex items-center">
+                        <svg class="w-3 h-3 mr-1 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        {% now "d/m/y H:i" %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="hidden md:flex items-center space-x-2">
+                {% if user.is_authenticated %}
+                    <a href="#" class="px-3 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 transition">DASHBOARD</a>
+                    <a href="#" class="px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition">INVENTARIO</a>
+                    <a href="#" class="px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition">TRANSACCIONES</a>
+                    
+                    <form action="{% url 'logout' %}" method="post" class="ml-2">
+                        {% csrf_token %}
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition shadow-lg shadow-red-900/20">
+                            Salir
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-lg text-xs font-black transition">ACCEDER</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</nav>
+{% endblock %}

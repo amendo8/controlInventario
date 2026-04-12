@@ -63,7 +63,17 @@ ROOT_URLCONF = 'core.urls'
 AUTH_USER_MODEL = 'users.User'
 
 # Redirección después del logout
-LOGOUT_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = 'home'
+
+# Indica a dónde ir después de loguearse con éxito
+LOGIN_REDIRECT_URL = 'home'
+
+# Indica a dónde ir después de cerrar sesión
+LOGOUT_REDIRECT_URL = 'login'
+
+# (Opcional) Indica la URL del login si intentan entrar a una página protegida
+LOGIN_URL = 'login'
+
 
 TEMPLATES = [
     {
