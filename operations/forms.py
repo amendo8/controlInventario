@@ -35,7 +35,29 @@ class EnvioForm(forms.ModelForm):
         model = Envio
         fields = ['guia_courier', 'empresa', 'fecha_envio']
         widgets = {
-            'guia_courier': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500', 'placeholder': 'Número de guía'}),
-            'empresa': forms.TextInput(attrs={'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500', 'placeholder': 'Empresa de courier'}),
-            'fecha_envio': forms.DateInput(attrs={'type': 'date', 'class': 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'}),
+            'guia_courier': forms.TextInput(attrs={
+                'class': 'text-xs border border-slate-200 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none', 
+                'placeholder': 'N° Guía (Zoom/Tealca)'
+            }),
+            'empresa': forms.TextInput(attrs={
+                'class': 'text-xs border border-slate-200 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none', 
+                'placeholder': 'Empresa'
+            }),
+            'fecha_envio': forms.DateInput(attrs={
+                'type': 'date', 
+                'class': 'text-xs border border-slate-200 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none'
+            }),
         }
+
+class AprobacionSupervisorForm(forms.Form):
+    """Formulario para que el supervisor autorice y comente"""
+    comentario = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'w-full p-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500',
+            'placeholder': 'Escriba la observación técnica o motivo de aprobación...',
+            'rows': '3'
+        }),
+        required=True,
+        label="Observación del Supervisor"
+    )
+    # Usamos un ChoiceField oculto o botones en el HTML para definir la acción

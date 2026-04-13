@@ -14,6 +14,9 @@ class Solicitud(models.Model):
     tecnico = models.ForeignKey('users.User', on_delete=models.PROTECT)
     estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE')
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    observaciones = models.TextField(blank=True, null=True) # Para el historial de fechas/comentarios
+    supervisor = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='solicitudes_revisadas')
+
 
     def __str__(self):
         return f"Ticket {self.ticket_crm} - {self.tecnico.username}"
@@ -52,14 +55,31 @@ class Envio(models.Model):
         is_new = self._state.adding
         super().save(*args, **kwargs)
         
-        if is_new and self.tipo == 'RETORNO':
-            # Al retornar, actualizamos el stock dañado para TODAS las partes del ticket
-            from inventory.models import Inventario
+        if is_new:
+            from inventory.models import Inventario, MovimientoKardex
             detalles = self.solicitud.detalles.all()
+            
             for item in detalles:
+                # Buscamos el stock en la oficina del técnico
                 inv, _ = Inventario.objects.get_or_create(
                     parte=item.parte, 
                     oficina=self.solicitud.tecnico.oficina
                 )
-                inv.cant_danada_por_recibir += item.cantidad
-                inv.save()
+                
+                if self.tipo == 'DESPACHADA':
+                    # 1. Creamos el movimiento de Kardex (esto actualiza automáticamente inv.cant_disponible)
+                    MovimientoKardex.objects.create(
+                        inventario=inv,
+                        tipo='SALIDA',
+                        cantidad=item.cantidad,
+                        usuario=self.solicitud.tecnico, # Podría ser request.user si lo pasas
+                        referencia=f"Ticket {self.solicitud.ticket_crm} / Guía {self.guia_courier}",
+                        observaciones=f"Despacho vía {self.empresa}"
+                    )
+                    # 2. Actualizamos el estado de la solicitud
+                    self.solicitud.estado = 'DESPACHADA'
+                    self.solicitud.save()
+
+                elif self.tipo == 'RETORNO':
+                    inv.cant_danada_por_recibir += item.cantidad
+                    inv.save()
