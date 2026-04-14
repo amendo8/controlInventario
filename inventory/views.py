@@ -3,6 +3,8 @@ from django.http import JsonResponse
 from django.db.models import Sum
 from .models import Inventario # Asegúrate de que el nombre de la clase sea este
 from .forms import InventarioForm
+from django.db import IntegrityError
+
 
 # Create your views here.
 
@@ -29,86 +31,95 @@ def detalle_stock(request, sku):
     # Buscamos todos los items que tengan ese SKU
     items = Inventario.objects.filter(parte__sku=sku).select_related('parte', 'oficina')
     
+    # 2. Calculamos el total sumado de todas las sedes para este SKU
+    totales = items.aggregate(
+        total_general=Sum('cant_disponible'),
+        total_transito=Sum('cant_en_transito')
+    )
+
     # Tomamos el primero solo para sacar el nombre del producto en el título
     producto = items.first() 
 
     return render(request, 'inventory/detalle.html', {
-        'items': items,
-        'producto': producto
+        'items': items, # Esta es la lista de seriales
+        'producto': producto,
+        'total_general': totales['total_general'] or 0,
+        'total_transito': totales['total_transito'] or 0,
     })
+
+   
 
 
 # Vista para el API que devuelve el detalle del stock en formato JSON
 def api_detalle_stock(request, sku):
-    try:
-        # 1. Filtramos usando tus campos reales: 'parte__sku'
-        items = Inventario.objects.filter(parte__sku=sku).select_related('parte', 'oficina')
-        
-        if not items.exists():
-            return JsonResponse({'error': 'SKU no encontrado'}, status=404)
-
-        parte = items[0].parte
-        
-        # 2. Construimos la lista con tus nombres de campo: cant_disponible, etc.
-        sedes_data = []
-        for i in items:
-            sedes_data.append({
-                'nombre': i.oficina.nombre,
-                'disponible': i.cant_disponible,      # Nombre correcto según tu modelo
-                'transito': i.cant_en_transito,       # Nombre correcto según tu modelo
-                'danado': i.cant_danada_por_recibir   # Nombre correcto según tu modelo
-            })
-
-        return JsonResponse({
-            'nombre': parte.nombre,
-            'sku': parte.sku,
-            'sedes': sedes_data
+    items = Inventario.objects.filter(parte__sku=sku)
+    total_suma = items.aggregate(total=Sum('cant_disponible'))['total'] or 0
+    
+    lista_sedes = []
+    for i in items:
+        lista_sedes.append({
+            'nombre': i.oficina.nombre,
+            'disponible': i.cant_disponible,
+            'serial': i.serial, # Enviamos el serial para el modal
+            'transito': i.cant_en_transito,
+            'danado': 0 # O tu lógica de dañados
         })
-    except Exception as e:
-        # Esto te mostrará cualquier otro error si llegara a ocurrir
-        return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({
+        'nombre': items.first().parte.nombre,
+        'total_general': total_suma, # <--- ENVIAR LA SUMA TOTAL
+        'sedes': lista_sedes
+    })
 
 # Cargar inventario desde formulario
+
+
 def cargar_item(request):
     if request.method == 'POST':
         form = InventarioForm(request.POST, request.FILES)
         
+        # Extraemos datos manualmente para la lógica de decisión
+        parte_id = request.POST.get('parte')
+        oficina_id = request.POST.get('oficina')
+        serial_ingresado = request.POST.get('serial', '').strip()
+
+        # --- LÓGICA PARA REPUESTOS GENÉRICOS (SIN SERIAL) ---
+        if not serial_ingresado:
+            existente_generico = Inventario.objects.filter(
+                parte_id=parte_id,
+                oficina_id=oficina_id,
+                serial__isnull=True
+            ).first()
+            
+            if existente_generico:
+                try:
+                    cantidad = int(request.POST.get('cant_disponible', 1))
+                    existente_generico.cant_disponible += cantidad
+                    # Si subiste una foto nueva, la actualizamos
+                    if request.FILES.get('foto_factura'):
+                        existente_generico.foto_factura = request.FILES['foto_factura']
+                    existente_generico.save()
+                    return redirect('lista_inventario')
+                except ValueError:
+                    pass
+
+        # --- LÓGICA PARA SERIALIZADOS O NUEVOS REGISTROS ---
         if form.is_valid():
             nuevo_item = form.save(commit=False)
             
-            # CASO 1: REPUESTO CON SERIAL (Ej: Tarjeta Madre)
+            # Si tiene serial, la cantidad SIEMPRE debe ser 1
             if nuevo_item.serial:
-                # Forzamos la cantidad a 1, sin importar lo que el usuario haya escrito
                 nuevo_item.cant_disponible = 1
-                
-                # Intentamos guardar. Si el serial ya existe, el modelo dará error por el 'unique=True'
-                try:
-                    nuevo_item.save()
-                    return redirect('inventory_list')
-                except Exception as e:
-                    form.add_error('serial', 'Este serial ya está registrado en el sistema.')
             
-            # CASO 2: REPUESTO GENÉRICO (Ej: Correas, Engranajes)
-            else:
-                # Buscamos si ya existe un registro GENÉRICO (sin serial) para esta parte y oficina
-                existente_generico = Inventario.objects.filter(
-                    parte=nuevo_item.parte,
-                    oficina=nuevo_item.oficina,
-                    serial__isnull=True
-                ).first()
-                
-                if existente_generico:
-                    # Sumamos la nueva cantidad al registro que ya teníamos
-                    existente_generico.cant_disponible += nuevo_item.cant_disponible
-                    existente_generico.save()
-                    return redirect('inventory_list')
-                else:
-                    # Si no existe registro genérico previo, creamos el primero
-                    nuevo_item.save()
-                    return redirect('inventory_list')
+            try:
+                nuevo_item.save()
+                return redirect('lista_inventario')
+            except IntegrityError:
+                # Este error salta si el serial ya existe en la base de datos
+                form.add_error('serial', 'ERROR CRÍTICO: Este número de serial ya está registrado en el sistema y no puede duplicarse.')
         else:
-            # Si el formulario falla (por el unique=True del serial, por ejemplo)
-            print(f"Errores: {form.errors}")
+            # Si hay otros errores (campos vacíos, etc.)
+            print(f"Errores en el formulario: {form.errors}")
             
     else:
         form = InventarioForm()

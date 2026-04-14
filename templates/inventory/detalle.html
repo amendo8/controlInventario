@@ -1,3 +1,4 @@
+<!-- templates/inventory/detalle.html 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Detalle de Inventario: {{ producto.parte.nombre }}</h2>
@@ -34,4 +35,51 @@
             </table>
         </div>
     </div>
+</div>
+-->
+
+<div class="bg-slate-900 p-8 text-white rounded-t-[2.5rem]">
+    <div class="flex justify-between items-start">
+        <div>
+            <h2 class="text-3xl font-black tracking-tighter uppercase">{{ producto.parte.nombre }}</h2>
+            <p class="text-blue-400 font-bold tracking-widest text-xs">SKU: {{ producto.parte.sku }}</p>
+        </div>
+        <div class="text-right">
+            <p class="text-[10px] font-black uppercase text-slate-400">Existencia Total</p>
+            <span class="text-4xl font-black text-white">{{ total_general }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="p-6">
+    <table class="w-full text-left">
+        <thead>
+            <tr class="text-[10px] font-black uppercase text-slate-400 border-b border-slate-100">
+                <th class="pb-3">Sede</th>
+                <th class="pb-3">Serial</th>
+                <th class="pb-3 text-center">Cant.</th>
+                <th class="pb-3">Estado</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-50">
+            {% for item in items %}
+            <tr class="text-sm">
+                <td class="py-4 font-bold text-slate-700">{{ item.oficina.nombre }}</td>
+                <td class="py-4 font-mono text-xs text-blue-600">
+                    {% if item.serial %}{{ item.serial }}{% else %}<span class="text-slate-300 italic">GENÉRICO</span>{% endif %}
+                </td>
+                <td class="py-4 text-center font-black">{{ item.cant_disponible }}</td>
+                <td class="py-4">
+                    <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-700">
+                        Disponible
+                    </span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="py-10 text-center text-slate-400 italic">No hay registros detallados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>

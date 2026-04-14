@@ -22,7 +22,8 @@ class Inventario(models.Model):
     foto_factura = models.ImageField(upload_to='imagen/inventory/%Y/%m/', null=True, blank=True)
 
     class Meta:
-        unique_together = ('parte', 'oficina')
+        unique_together = ('parte', 'oficina','serial')  # Esto asegura que no puedas tener dos registros con el mismo SKU, oficina y serial
+        
 
     def save(self, *args, **kwargs):
         # Lógica de negocio: Si tiene serial, la cantidad DEBE ser 1
