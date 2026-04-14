@@ -1,0 +1,109 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Panel de Despacho - ServiExpressGlobal{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="mb-8 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tighter">Logística de Despacho</h1>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest text-blue-500">Monitoreo de Salidas y Stock Crítico</p>
+        </div>
+        <div class="flex gap-4">
+            <div class="bg-white px-6 py-3 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <p class="text-[9px] font-black text-slate-400 uppercase">Solicitudes Hoy</p>
+                <p class="text-xl font-black text-slate-800">{{ total_solicitudes }}</p>
+            </div>
+            <div class="bg-slate-900 px-6 py-3 rounded-2xl shadow-lg text-center">
+                <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest text-white/50">Bajo Stock</p>
+                <p class="text-xl font-black text-red-500">{{ low_stock_count }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <div class="lg:col-span-3 space-y-4">
+            <h2 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center">
+                <span class="bg-blue-600 w-2 h-2 rounded-full mr-2"></span>
+                Cola de Salida
+            </h2>
+            
+            {% for solicitud in solicitudes %}
+                <div class="bg-white rounded-3xl border border-slate-200 p-5 flex items-center justify-between hover:border-blue-300 transition-colors shadow-sm">
+                    <div class="flex items-center gap-6">
+                        <div class="text-center border-r border-slate-100 pr-6">
+                            <p class="text-[10px] font-black text-slate-400 uppercase">Ticket</p>
+                            <p class="text-lg font-black text-slate-800">{{ solicitud.ticket }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-700 uppercase">{{ solicitud.tecnico }}</p>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase">{{ solicitud.ubicacion }}</p>
+                        </div>
+                        <div class="hidden md:block">
+                            <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Partes</p>
+                            <div class="flex gap-1">
+                                {% for parte in solicitud.partes %}
+                                    <span class="bg-slate-100 text-slate-600 text-[9px] font-bold px-2 py-0.5 rounded">{{ parte.nombre }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <div class="text-right">
+                            <p class="text-[9px] font-black uppercase {% if solicitud.dias_pendientes > 2 %}text-red-500{% else %}text-slate-400{% endif %}">
+                                {{ solicitud.dias_pendientes }} días en espera
+                            </p>
+                            <span class="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                                {{ solicitud.estado }}
+                            </span>
+                        </div>
+                        <a href="{% url 'gestion_solicitudes' %}" class="bg-slate-900 text-white p-3 rounded-2xl hover:bg-blue-600 transition-colors">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="bg-white p-10 rounded-[2rem] text-center border border-slate-200">
+                    <p class="text-slate-400 font-bold text-xs uppercase tracking-widest">No hay despachos pendientes de procesar</p>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+                <h3 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Piezas Requeridas</h3>
+                <div class="space-y-3">
+                    {% for item in pending_parts %}
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-bold text-slate-600 truncate mr-2">{{ item.nombre }}</span>
+                            <span class="bg-slate-100 text-slate-800 text-[10px] font-black px-2 py-1 rounded-lg">x{{ item.cantidad }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="bg-slate-900 p-6 rounded-[2rem] shadow-xl">
+                <h3 class="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Stock en Oficinas</h3>
+                <div class="space-y-4">
+                    {% for inv in inventory_items %}
+                        <div class="border-b border-slate-800 pb-3 last:border-0">
+                            <p class="text-[10px] font-black text-white uppercase truncate">{{ inv.parte }}</p>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-[9px] text-slate-500 font-bold uppercase">{{ inv.oficina }}</span>
+                                <span class="text-xs font-black {% if inv.disponible <= inv.stock_minimo %}text-red-500{% else %}text-emerald-400{% endif %}">
+                                    {{ inv.disponible }} disp.
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
