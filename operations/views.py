@@ -167,7 +167,8 @@ def gestion_solicitudes(request):
 
     solicitud_form = SolicitudForm()
     detalle_formset = DetalleSolicitudFormSet(queryset=DetalleSolicitud.objects.none())
-
+    
+    # Cambiar estatus
     if request.method == 'POST':
         if 'add_solicitud' in request.POST:
             solicitud_form = SolicitudForm(request.POST)
@@ -184,21 +185,42 @@ def gestion_solicitudes(request):
         elif 'change_status' in request.POST:
             solicitud_id = request.POST.get('solicitud_id')
             solicitud = get_object_or_404(Solicitud, id=solicitud_id)
+            old_estado = solicitud.estado # Guardamos el estado anterior para la lógica de validación
             status_form = CambioEstatusForm(request.POST, instance=solicitud)
             new_estado = request.POST.get('estado')
             envio_form = None
             if new_estado == 'RESUELTO':
                 envio_form = EnvioForm(request.POST)
             
-            if status_form.is_valid() and (envio_form is None or envio_form.is_valid()):
-                status_form.save()
-                if envio_form:
-                    envio = envio_form.save(commit=False)
-                    envio.solicitud = solicitud
-                    envio.tipo = 'RETORNO'
-                    envio.save()
-                messages.success(request, f'Estatus de la solicitud {solicitud.ticket_crm} actualizado.')
-                return redirect('gestion_solicitudes')
+            if status_form.is_valid():
+                # --- NUEVA LÓGICA DE IMPACTO EN INVENTARIO ---
+                if old_estado == 'APROBADA' and new_estado == 'DESPACHADA':
+                    # Al despachar, restamos del inventario de la oficina del despacho
+                    # (Asumimos que el despacho sale de la oficina principal o la del usuario logueado)
+                    for detalle in solicitud.detalles.all():
+                        # Buscamos el ítem en el inventario (Priorizamos genéricos o el primero disponible)
+                        inv_item = Inventario.objects.filter(
+                            parte=detalle.parte, 
+                            cant_disponible__gte=detalle.cantidad
+                        ).first()
+
+                        if inv_item:
+                            inv_item.cant_disponible -= detalle.cantidad
+                            inv_item.cant_en_transito += detalle.cantidad # Lo movemos a tránsito
+                            inv_item.save()
+                            
+                            # Registramos en Kardex
+                            MovimientoKardex.objects.create(
+                                inventario=inv_item,
+                                tipo='SALIDA',
+                                cantidad=detalle.cantidad,
+                                usuario=request.user,
+                                referencia=f"Despacho Ticket {solicitud.ticket_crm}"
+                            )
+                        else:
+                            messages.error(request, f"No hay stock suficiente para {detalle.parte.nombre}")
+                            return redirect('gestion_solicitudes')
+                # --------------------------------------------
             else:
                 error_msg = f'Error al actualizar el estatus: {status_form.errors}'
                 if envio_form and not envio_form.is_valid():

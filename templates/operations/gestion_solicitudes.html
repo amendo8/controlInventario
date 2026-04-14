@@ -1,216 +1,223 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Solicitudes - Sistema de Inventario</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
-    <header class="bg-blue-600 text-white p-4 flex items-center justify-between gap-4 flex-wrap">
+{% extends 'core/base.html' %}
+
+{% block title %}Gestión de Solicitudes - ServiExpressGlobal{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="mb-8 flex justify-between items-center">
         <div>
-            <h1 class="text-xl font-bold">Gestión de Solicitudes</h1>
-            <p class="text-sm text-blue-100">Usuario: {{ user.username }} ({{ user.get_rol_display }})</p>
+            <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tighter">Transacciones</h1>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Control de solicitudes y flujo de partes</p>
         </div>
-        <div class="flex gap-2">
-            <a href="{% url 'despacho' %}" class="bg-slate-600 text-white px-4 py-2 rounded hover:bg-slate-700">Volver al Dashboard</a>
-            <form method="post" action="{% url 'logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Cerrar Sesión</button>
-            </form>
-        </div>
-    </header>
+        <a href="{% url 'despacho' %}" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all">
+            Vista de Despacho
+        </a>
+    </div>
+    <div class="mb-4">
+        <a href="{% url 'home' %}" class="inline-flex items-center text-[10px] font-black text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest group">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Regresar al Dashboard
+        </a>
+    </div>
 
-    <main class="p-8">
-        {% if messages %}
-            <div class="mb-6">
-                {% for message in messages %}
-                    <div class="rounded-lg p-4 {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="mb-6 p-4 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center shadow-sm 
+                {% if message.tags == 'error' %}bg-red-50 text-red-600 border border-red-100{% else %}bg-emerald-50 text-emerald-600 border border-emerald-100{% endif %}">
+                {{ message }}
             </div>
-        {% endif %}
+        {% endfor %}
+    {% endif %}
 
-        <div class="mx-auto w-[60%] max-w-[90%]">
-            <h2 class="text-2xl font-bold mb-4">Solicitudes Existentes</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-2 space-y-6">
+            <h2 class="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Solicitudes Activas</h2>
+            
             {% if solicitudes %}
                 <div class="space-y-4">
                     {% for solicitud in solicitudes %}
-                        <div class="bg-white p-6 rounded-lg shadow">
-                            <div class="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 class="text-lg font-semibold">{{ solicitud.ticket }}</h3>
-                                    <p class="text-sm text-gray-600">Técnico: {{ solicitud.tecnico }} | Ubicación: {{ solicitud.ubicacion }}</p>
-                                    <p class="text-sm text-gray-600">Fecha: {{ solicitud.fecha|date:'d/m/Y H:i' }}</p>
-                                    <p class="text-sm text-gray-600">Fecha de Despacho: {% if solicitud.fecha_despacho %}{{ solicitud.fecha_despacho|date:'d/m/Y' }}{% else %}No disponible{% endif %}</p>
-                                </div>
-                                <div class="text-right">
-                                    <span class="px-3 py-1 rounded-full text-sm {% if solicitud.estado == 'PENDIENTE' %}bg-yellow-100 text-yellow-800{% elif solicitud.estado == 'APROBADA' %}bg-blue-100 text-blue-800{% elif solicitud.estado == 'DESPACHADA' %}bg-purple-100 text-purple-800{% elif solicitud.estado == 'RESUELTO' %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                        <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                            <div class="p-6">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <span class="bg-slate-100 text-slate-500 text-[9px] font-black px-2 py-1 rounded-md uppercase mb-1 inline-block">ID: {{ solicitud.id }}</span>
+                                        <h3 class="text-xl font-black text-slate-800 tracking-tighter">{{ solicitud.ticket }}</h3>
+                                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">
+                                            Técnico: <span class="text-slate-600">{{ solicitud.tecnico }}</span> | 
+                                            Oficina: <span class="text-slate-600">{{ solicitud.ubicacion }}</span>
+                                        </p>
+                                    </div>
+                                    <span class="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest
+                                        {% if solicitud.estado_value == 'PENDIENTE' %}bg-amber-100 text-amber-700
+                                        {% elif solicitud.estado_value == 'APROBADA' %}bg-blue-100 text-blue-700
+                                        {% elif solicitud.estado_value == 'DESPACHADA' %}bg-indigo-100 text-indigo-700
+                                        {% elif solicitud.estado_value == 'RESUELTO' %}bg-emerald-100 text-emerald-700
+                                        {% else %}bg-slate-100 text-slate-600{% endif %}">
                                         {{ solicitud.estado }}
                                     </span>
                                 </div>
-                            </div>
-                            <div class="mb-4">
-                                <h4 class="font-medium mb-2">Partes solicitadas:</h4>
-                                <div class="flex flex-wrap gap-2">
-                                    {% for detalle in solicitud.detalles %}
-                                        <span class="bg-blue-100 text-blue-700 text-sm px-3 py-1 rounded-full">{{ detalle.parte }} ({{ detalle.cantidad }})</span>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% if solicitud.envios %}
-                                <div class="mb-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                    <h4 class="font-medium mb-2">Envíos registrados</h4>
-                                    <ul class="space-y-2 text-sm text-slate-700">
-                                        {% for envio in solicitud.envios %}
-                                            <li class="grid grid-cols-1 md:grid-cols-3 gap-2 items-center bg-white p-3 rounded border border-slate-200">
-                                                <span><strong>{{ envio.tipo }}:</strong> {{ envio.guia_courier }}</span>
-                                                <span><strong>Empresa:</strong> {{ envio.empresa }}</span>
-                                                <span><strong>Fecha envío:</strong> {{ envio.fecha_envio|date:'d/m/Y' }}</span>
-                                            </li>
+
+                                <div class="mb-6">
+                                    <p class="text-[10px] font-black text-slate-400 uppercase mb-2">Partes Requeridas</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        {% for detalle in solicitud.detalles %}
+                                            <div class="bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                                                <span class="text-xs font-bold text-slate-700">{{ detalle.parte }}</span>
+                                                <span class="bg-slate-900 text-white text-[10px] font-black px-2 py-0.5 rounded-lg">{{ detalle.cantidad }}</span>
+                                            </div>
                                         {% endfor %}
-                                    </ul>
+                                    </div>
                                 </div>
-                            {% endif %}
-                            <div class="mt-4 flex gap-4 flex-wrap">
-                                {% if solicitud.estado_value != 'CERRADA' %}
-                                    <form method="post" class="flex flex-wrap items-end gap-2 w-full">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="add_partes" value="1">
-                                        <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
-                                        <div class="flex-1 min-w-[200px]">
-                                            <label class="block text-sm font-medium text-gray-700">Agregar Parte</label>
-                                            <select name="parte" required class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
-                                                <option value="">Seleccionar parte</option>
-                                                {% for parte in partes_disponibles %}
-                                                    <option value="{{ parte.id }}">{{ parte.nombre }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="w-32 min-w-[120px]">
-                                            <label class="block text-sm font-medium text-gray-700">Cantidad</label>
-                                            <input type="number" name="cantidad" min="1" required class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
-                                        </div>
-                                        <div class="self-end ml-auto">
-                                            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded text-sm hover:bg-green-600">Agregar parte</button>
-                                        </div>
-                                    </form>
+
+                                {% if solicitud.envios %}
+                                    <div class="mb-6 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                                        <p class="text-[10px] font-black text-blue-400 uppercase mb-2">Logística de Envío</p>
+                                        {% for envio in solicitud.envios %}
+                                            <div class="text-[11px] font-bold text-blue-800 flex justify-between items-center mb-1">
+                                                <span>{{ envio.tipo }}: <span class="font-black">{{ envio.guia_courier }}</span> ({{ envio.empresa }})</span>
+                                                <span>{{ envio.fecha_envio|date:'d/m/Y' }}</span>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
                                 {% endif %}
-                                {% if solicitud.next_states %}
-                                    <form method="post" class="flex gap-4 items-end" id="status-form-{{ solicitud.id }}">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="change_status" value="1">
-                                        <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
-                                        <div>
-                                            <label for="id_estado_{{ solicitud.id }}" class="block text-sm font-medium text-gray-700">Cambiar Estatus</label>
-                                            <select name="estado" id="id_estado_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="toggleEnvioFields({{ solicitud.id }})">
-                                                <option value="{{ solicitud.estado_value }}" selected>{{ solicitud.estado }}</option>
-                                                {% for value, display in solicitud.next_states %}
-                                                    <option value="{{ value }}">{{ display }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div id="envio-fields-{{ solicitud.id }}" class="hidden gap-4 items-end">
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700">Guía de Courier</label>
-                                                <input type="text" name="guia_courier" id="guia_courier_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Número de guía">
+
+                                <div class="pt-4 border-t border-slate-100">
+                                    {% if solicitud.next_states %}
+                                        <form method="post" class="flex flex-wrap items-end gap-3">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="change_status" value="1">
+                                            <input type="hidden" name="solicitud_id" value="{{ solicitud.id }}">
+                                            
+                                            <div class="flex-1 min-w-[140px]">
+                                                <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 ml-1">Cambiar Estado</label>
+                                                <select name="estado" id="id_estado_{{ solicitud.id }}" 
+                                                        onchange="toggleEnvioFields({{ solicitud.id }})"
+                                                        class="w-full bg-slate-50 border-slate-200 rounded-xl text-xs font-bold p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                                                    <option value="{{ solicitud.estado_value }}">{{ solicitud.estado }} (Actual)</option>
+                                                    {% for value, display in solicitud.next_states %}
+                                                        <option value="{{ value }}">{{ display }}</option>
+                                                    {% endfor %}
+                                                </select>
                                             </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700">Empresa</label>
-                                                <input type="text" name="empresa" id="empresa_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Empresa de courier">
+
+                                            <div id="envio-fields-{{ solicitud.id }}" class="hidden gap-3 items-end">
+                                                <input type="text" name="guia_courier" id="guia_courier_{{ solicitud.id }}" placeholder="Guía" class="bg-white border-slate-200 rounded-xl text-xs p-2.5 w-24">
+                                                <input type="text" name="empresa" id="empresa_{{ solicitud.id }}" placeholder="Empresa" class="bg-white border-slate-200 rounded-xl text-xs p-2.5 w-24">
+                                                <input type="date" name="fecha_envio" id="fecha_envio_{{ solicitud.id }}" class="bg-white border-slate-200 rounded-xl text-xs p-2.5">
                                             </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700">Fecha de envío</label>
-                                                <input type="date" name="fecha_envio" id="fecha_envio_{{ solicitud.id }}" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                            </div>
-                                        </div>
-                                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Actualizar Estatus</button>
-                                    </form>
-                                {% else %}
-                                    <p class="text-sm text-gray-500">Esta solicitud está cerrada y no puede cambiar de estatus.</p>
-                                {% endif %}
+
+                                            <button type="submit" class="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest px-6 py-3 rounded-xl hover:bg-blue-600 transition-colors">
+                                                Actualizar
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <p class="text-[10px] font-bold text-slate-300 uppercase italic">Registro finalizado</p>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="bg-white p-6 rounded-lg shadow text-center">
-                    <p class="text-gray-600">No hay solicitudes registradas.</p>
+                <div class="bg-white p-12 rounded-[2.5rem] text-center border-2 border-dashed border-slate-200">
+                    <p class="text-slate-400 font-bold uppercase tracking-widest text-xs">No hay solicitudes pendientes</p>
                 </div>
             {% endif %}
         </div>
 
-
-        <div class="mx-auto w-[60%] max-w-[90%] mb-8">
-            <h2 class="text-2xl font-bold mb-4">Agregar Nueva Solicitud</h2>
-            <form method="post" class="bg-white p-6 rounded-lg shadow">
-                {% csrf_token %}
-                <input type="hidden" name="add_solicitud" value="1">
-                <div class="grid gap-4 md:grid-cols-2">
-                    <div>{{ solicitud_form.ticket_crm.label_tag }}{{ solicitud_form.ticket_crm }}</div>
-                    <div>{{ solicitud_form.tecnico.label_tag }}{{ solicitud_form.tecnico }}</div>
-                </div>
-                <div class="mt-4">
-                    <h3 class="text-lg font-semibold mb-2">Detalles de Partes</h3>
-                    {{ detalle_formset.management_form }}
-                    <div id="detalle-forms">
-                        {% for form in detalle_formset %}
-                            <div class="grid gap-4 md:grid-cols-3 mb-4 p-4 border rounded">
-                                <div>{{ form.parte.label_tag }}{{ form.parte }}</div>
-                                <div>{{ form.cantidad.label_tag }}{{ form.cantidad }}</div>
-                                <div>{{ form.DELETE.label_tag }}{{ form.DELETE }}</div>
-                            </div>
-                        {% endfor %}
+        <div class="space-y-6">
+            <h2 class="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Nueva Solicitud</h2>
+            <div class="bg-white p-6 rounded-[2rem] shadow-lg border border-slate-200 sticky top-24">
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="add_solicitud" value="1">
+                    
+                    <div>
+                        <label class="block text-[10px] font-black uppercase text-slate-400 mb-1 ml-1">Ticket CRM</label>
+                        {{ solicitud_form.ticket_crm }}
                     </div>
-                </div>
-                <div class="mt-4">
-                    <button type="submit" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">Crear Solicitud</button>
-                </div>
-            </form>
+                    <div>
+                        <label class="block text-[10px] font-black uppercase text-slate-400 mb-1 ml-1">Técnico</label>
+                        {{ solicitud_form.tecnico }}
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-[10px] font-black uppercase text-slate-900 tracking-widest">Partes</h3>
+                            <button type="button" onclick="addDetalleForm()" class="text-[9px] font-black bg-blue-50 text-blue-600 px-3 py-1 rounded-lg hover:bg-blue-100 transition-colors">
+                                + AÑADIR FILA
+                            </button>
+                        </div>
+                        
+                        {{ detalle_formset.management_form }}
+                        <div id="detalle-forms" class="space-y-3">
+                            {% for form in detalle_formset %}
+                                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 relative">
+                                    <div class="grid grid-cols-1 gap-2">
+                                        <div class="text-[9px] font-bold">Parte: {{ form.parte }}</div>
+                                        <div class="flex items-center justify-between">
+                                            <div class="text-[9px] font-bold w-1/2">Cant: {{ form.cantidad }}</div>
+                                            <div class="flex items-center gap-1 text-[9px] font-bold text-red-500">
+                                                {{ form.DELETE }} Borrar
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 text-white font-black uppercase text-xs tracking-[0.2em] py-4 rounded-2xl shadow-lg shadow-blue-200 hover:bg-slate-900 transition-all">
+                        Crear Solicitud
+                    </button>
+                </form>
+            </div>
         </div>
+    </div>
+</div>
+{% endblock %}
 
-    </main>
+{% block extra_js %}
+<script>
+    function addDetalleForm() {
+        const container = document.getElementById('detalle-forms');
+        const totalForms = document.querySelector('input[name="detalle-TOTAL_FORMS"]');
+        const newIndex = parseInt(totalForms.value);
+        
+        const forms = container.querySelectorAll('div.relative');
+        const newForm = forms[0].cloneNode(true);
+        
+        newForm.innerHTML = newForm.innerHTML.replace(/-0-/g, `-${newIndex}-`);
+        
+        newForm.querySelectorAll('input, select').forEach(input => {
+            input.value = '';
+            if(input.type === 'checkbox') input.checked = false;
+        });
 
-    <script>
-        function addDetalleForm() {
-            const container = document.getElementById('detalle-forms');
-            const totalForms = document.querySelector('input[name="detalle-TOTAL_FORMS"]');
-            const newIndex = parseInt(totalForms.value);
-            const newForm = `
-                <div class="grid gap-4 md:grid-cols-3 mb-4 p-4 border rounded">
-                    <div><label>Parte:</label><select name="detalle-${newIndex}-parte" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"><option value="">---------</option></select></div>
-                    <div><label>Cantidad:</label><input type="number" name="detalle-${newIndex}-cantidad" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
-                    <div><label>Eliminar:</label><input type="checkbox" name="detalle-${newIndex}-DELETE"></div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', newForm);
-            totalForms.value = newIndex + 1;
+        container.appendChild(newForm);
+        totalForms.value = newIndex + 1;
+    }
+
+    function toggleEnvioFields(solicitudId) {
+        const select = document.getElementById(`id_estado_${solicitudId}`);
+        const envioFields = document.getElementById(`envio-fields-${solicitudId}`);
+        const inputs = envioFields.querySelectorAll('input');
+        
+        if (select.value === 'RESUELTO') {
+            envioFields.classList.remove('hidden');
+            envioFields.classList.add('flex');
+            inputs.forEach(i => i.required = true);
+        } else {
+            envioFields.classList.add('hidden');
+            envioFields.classList.remove('flex');
+            inputs.forEach(i => {
+                i.required = false;
+                i.value = '';
+            });
         }
-
-        function toggleEnvioFields(solicitudId) {
-            const select = document.getElementById(`id_estado_${solicitudId}`);
-            const envioFields = document.getElementById(`envio-fields-${solicitudId}`);
-            const guiaInput = document.getElementById(`guia_courier_${solicitudId}`);
-            const empresaInput = document.getElementById(`empresa_${solicitudId}`);
-            const fechaEnvioInput = document.getElementById(`fecha_envio_${solicitudId}`);
-            if (select.value === 'RESUELTO') {
-                envioFields.classList.remove('hidden');
-                envioFields.classList.add('flex');
-                guiaInput.required = true;
-                empresaInput.required = true;
-                fechaEnvioInput.required = true;
-            } else {
-                envioFields.classList.add('hidden');
-                envioFields.classList.remove('flex');
-                guiaInput.required = false;
-                empresaInput.required = false;
-                fechaEnvioInput.required = false;
-                guiaInput.value = '';
-                empresaInput.value = '';
-                fechaEnvioInput.value = '';
-            }
-        }
-    </script>
-</body>
-</html>
+    }
+</script>
+{% endblock %}
