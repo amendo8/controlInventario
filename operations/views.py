@@ -7,7 +7,7 @@ from django.contrib import messages
 
 from .models import Solicitud, DetalleSolicitud
 from .forms import SolicitudForm, DetalleSolicitudForm, DetalleSolicitudFormSet, CambioEstatusForm, EnvioForm
-from inventory.models import Inventario, MovimientoKardex, AlertaInventario
+from inventory.models import Inventario, MovimientoKardex
 from catalog.models import Parte
 
 # Definir transiciones de estado
