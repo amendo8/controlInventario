@@ -1,3 +1,4 @@
+from PIL.Image import item
 from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from inventory.models import Inventario, MovimientoKardex
@@ -25,14 +26,18 @@ class Solicitud(models.Model):
         return f"Ticket {self.ticket_crm} - {self.tecnico.username}"
 
     def save(self, *args, **kwargs):
-        # Guardamos primero para tener el ID de la solicitud y luego procesamos el movimiento de salida si es necesario
+        # 1. Guardamos la instancia primero
         super().save(*args, **kwargs)
-        # Solo procesamos el movimiento de salida si el estado cambia a DESPACHADA
-        if self.pk:  # Solo si la solicitud ya existe (no es nueva)
-            old_instance = Solicitud.objects.get(pk=self.pk)
-            if old_instance.estado != 'DESPACHADA' and self.estado == 'DESPACHADA':
-                # Aquí podrías agregar lógica adicional si necesitas algo específico al despachar
-                self.procesar_salida_inventario()
+        
+        # 2. Solo disparamos la lógica si el estado cambió a DESPACHADA
+        if self.pk:
+            # Aquí está el truco: usamos filter().first() en lugar de get() 
+            # para evitar que el sistema explote si la instancia vieja no se encuentra
+            old_instance = Solicitud.objects.filter(pk=self.pk).first()
+            
+            if old_instance and old_instance.estado != 'DESPACHADA' and self.estado == 'DESPACHADA':
+                # Llamamos al método que acabamos de corregir
+                self.procesar_despacho_kardex()
     
     def procesar_salida_inventario(self):
         """
@@ -97,8 +102,8 @@ class Envio(models.Model):
     # pero por ahora, lo ligamos a la Solicitud general para facilitar la logística.
     fecha = models.DateTimeField(auto_now_add=True)
 
-    ########################################################################
-
+    
+    # Método para procesar el movimiento de salida al cambiar el estado a DESPACHADA
     
     def save(self, *args, **kwargs):
         is_new = self._state.adding
@@ -153,3 +158,113 @@ class Envio(models.Model):
                 # Actualizamos el estado de la solicitud
                 from .models import Solicitud
                 Solicitud.objects.filter(pk=self.solicitud_id).update(estado='DESPACHADA')
+
+
+    ## Método para procesar movimientos de salida al cambiar el estado a DESPACHADA
+    class Envio(models.Model):
+        TIPOS = (('DESPACHADA', 'Despacho al técnico'), ('RETORNO', 'Retorno al almacén'))
+    
+        solicitud = models.ForeignKey(Solicitud, on_delete=models.CASCADE, related_name='envios')
+        tipo = models.CharField(max_length=20, choices=TIPOS)
+        guia_courier = models.CharField(max_length=100)
+        empresa = models.CharField(max_length=50)
+        fecha_envio = models.DateField(null=True, blank=True)
+        fecha = models.DateTimeField(auto_now_add=True)
+    
+        # Añadimos este campo para capturar el serial que viene de vuelta si es necesario
+        serial_devuelto = models.CharField(max_length=100, null=True, blank=True, help_text="Serial de la pieza dañada")
+
+        def save(self, *args, **kwargs):
+            is_new = self._state.adding
+            super().save(*args, **kwargs)
+        
+            if is_new:
+                if self.tipo == 'DESPACHADA':
+                    self.procesar_despacho()
+                elif self.tipo == 'RETORNO':
+                    self.procesar_retorno_completo()
+
+        def procesar_despacho(self):
+            """
+            Lógica para registrar los movimientos de salida (Caracas) 
+            y entrada (Barquisimeto) a través del Kardex.
+            """
+
+            with transaction.atomic():
+                self.solicitud.refresh_from_db()
+                detalles = self.solicitud.detalles.all()
+                oficina_origen = self.solicitud.supervisor.oficina
+                oficina_destino = self.solicitud.tecnico.oficina
+
+                for item in detalles:
+                    # --- 1. REGISTRAMOS SALIDA (ORIGEN) ---
+                    # Ya no buscamos inv_origen. El Signal lo gestionará.
+                    MovimientoKardex.objects.create(
+                        parte=item.parte,
+                        oficina=oficina_origen,
+                        tipo='SALIDA',
+                        cantidad=item.cantidad,
+                        usuario=self.solicitud.tecnico,
+                        referencia=f"Ticket {self.solicitud.ticket_crm}",
+                        observaciones=f"Despacho automático hacia {oficina_destino}"
+                    )
+
+                    # --- 2. REGISTRAMOS ENTRADA (DESTINO) ---
+                    # El Signal creará el registro de Inventario en el destino si no existe.
+                    MovimientoKardex.objects.create(
+                        parte=item.parte,
+                        oficina=oficina_destino,
+                        tipo='ENTRADA',
+                        cantidad=item.cantidad,
+                        usuario=self.solicitud.tecnico,
+                        referencia=f"Ticket {self.solicitud.ticket_crm}",
+                        observaciones=f"Entrada automática por recepción de {oficina_origen}"
+                    )
+                
+                # Actualizamos el estado de la solicitud
+                self.solicitud.estado = 'DESPACHADA'
+                # Usamos update_fields para evitar disparar señales innecesarias de la solicitud si no hace falta
+                self.solicitud.save(update_fields=['estado'])
+
+        def procesar_retorno_completo(self):
+            """Lógica para procesar la devolución de todas las partes del ticket"""
+            from inventory.models import Inventario, MovimientoKardex
+            from django.db import transaction
+
+            detalles = self.solicitud.detalles.all()
+            oficina_tecnico = self.solicitud.tecnico.oficina
+            oficina_supervisor = self.solicitud.supervisor.oficina
+
+            with transaction.atomic():
+                for item in detalles:
+                    # 1. Determinamos cantidad y serial según el tipo de parte
+                    if item.parte.tiene_serial:
+                        if not self.serial_devuelto:
+                            raise ValueError(f"La parte {item.parte.nombre} requiere un serial para el retorno.")
+                        cant_mov = 1
+                    else:
+                        cant_mov = item.cantidad
+
+                    # 2. SALIDA DEL TÉCNICO (Barquisimeto)
+                    inv_tec = Inventario.objects.select_for_update().get(parte=item.parte, oficina=oficina_tecnico)
+                    MovimientoKardex.objects.create(
+                        inventario=inv_tec,
+                        tipo='SALIDA',
+                        cantidad=cant_mov,
+                        serial=self.serial_devuelto if item.parte.tiene_serial else None,
+                        referencia=f"RETORNO-{self.solicitud.ticket_crm}",
+                        observaciones=f"Técnico devuelve pieza {'dañada' if item.parte.tiene_serial else 'genérica'}"
+                    )
+
+                    # 3. ENTRADA AL SUPERVISOR (Caracas)
+                    inv_sup, _ = Inventario.objects.select_for_update().get_or_create(
+                        parte=item.parte, oficina=oficina_supervisor, defaults={'cant_disponible': 0}
+                    )
+                    MovimientoKardex.objects.create(
+                        inventario=inv_sup,
+                        tipo='ENTRADA',
+                        cantidad=cant_mov,
+                        serial=self.serial_devuelto if item.parte.tiene_serial else None,
+                        referencia=f"RETORNO-{self.solicitud.ticket_crm}",
+                        observaciones=f"Almacén recibe pieza dañada/retorno. SN: {self.serial_devuelto}"
+                    )

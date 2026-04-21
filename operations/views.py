@@ -26,7 +26,7 @@ TRANSITIONS = {
 def home(request):
     # 1. KPIs Principales
     total_piezas = Inventario.objects.aggregate(total=Sum('cant_disponible'))['total'] or 0
-    alertas_criticas = AlertaInventario.objects.filter(leida=False, nivel='CRITICAL').count()
+    #alertas_criticas = AlertaInventario.objects.filter(leida=False, nivel='CRITICAL').count()
     piezas_transito = Inventario.objects.aggregate(total=Sum('cant_en_transito'))['total'] or 0
     
     # 2. Últimos movimientos del Kardex para la tabla
@@ -36,7 +36,7 @@ def home(request):
 
     context = {
         'total_piezas': total_piezas,
-        'alertas_criticas': alertas_criticas,
+        #'alertas_criticas': alertas_criticas,
         'piezas_transito': piezas_transito,
         'ultimos_movimientos': ultimos_movimientos,
     }
