@@ -89,79 +89,9 @@ class DetalleSolicitud(models.Model):
         return f"{self.cantidad} x {self.parte.nombre}"
 
 
-# Este modelo se encarga de registrar los envíos tanto de despacho como de retorno, vinculados a una solicitud específica.
+## Método para procesar movimientos de salida al cambiar el estado a DESPACHADA
+
 class Envio(models.Model):
-    TIPOS = (('DESPACHADA', 'Despacho al técnico'), ('RETORNO', 'Retorno al almacén'))
-    
-    solicitud = models.ForeignKey(Solicitud, on_delete=models.CASCADE, related_name='envios')
-    tipo = models.CharField(max_length=20, choices=TIPOS)
-    guia_courier = models.CharField(max_length=100)
-    empresa = models.CharField(max_length=50)
-    fecha_envio = models.DateField(null=True, blank=True)
-    # Si quieres ser muy específico, podrías ligar el envío a un DetalleSolicitud,
-    # pero por ahora, lo ligamos a la Solicitud general para facilitar la logística.
-    fecha = models.DateTimeField(auto_now_add=True)
-
-    
-    # Método para procesar el movimiento de salida al cambiar el estado a DESPACHADA
-    
-    def save(self, *args, **kwargs):
-        is_new = self._state.adding
-        super().save(*args, **kwargs)
-        
-        if is_new and self.tipo == 'DESPACHADA':
-            from inventory.models import Inventario, MovimientoKardex
-            from django.db import transaction
-            
-            with transaction.atomic():
-                self.solicitud.refresh_from_db()
-                detalles = self.solicitud.detalles.all()
-                
-                # 1. Almacén de Origen (donde está el Supervisor)
-                oficina_origen = self.solicitud.supervisor.oficina
-                # 2. Almacén de Destino (donde está el Técnico)
-                oficina_destino = self.solicitud.tecnico.oficina
-
-                for item in detalles:
-                    # --- OPERACIÓN EN ORIGEN (SALIDA) ---
-                    inv_origen = Inventario.objects.select_for_update().get(
-                        parte=item.parte, 
-                        oficina=oficina_origen
-                    )
-                    
-                    MovimientoKardex.objects.create(
-                        inventario=inv_origen,
-                        tipo='SALIDA',
-                        cantidad=item.cantidad,
-                        usuario=self.solicitud.tecnico,
-                        referencia=f"Ticket {self.solicitud.ticket_crm}",
-                        observaciones=f"Salida de {oficina_origen} hacia {oficina_destino}"
-                    )
-
-                    # --- OPERACIÓN EN DESTINO (ENTRADA) ---
-                    # Usamos get_or_create por si la pieza nunca ha estado en Barquisimeto
-                    inv_destino, _ = Inventario.objects.select_for_update().get_or_create(
-                        parte=item.parte,
-                        oficina=oficina_destino,
-                        defaults={'cant_disponible': 0}
-                    )
-                    
-                    MovimientoKardex.objects.create(
-                        inventario=inv_destino,
-                        tipo='ENTRADA',
-                        cantidad=item.cantidad,
-                        usuario=self.solicitud.tecnico,
-                        referencia=f"Ticket {self.solicitud.ticket_crm}",
-                        observaciones=f"Entrada por despacho desde {oficina_origen}"
-                    )
-                
-                # Actualizamos el estado de la solicitud
-                from .models import Solicitud
-                Solicitud.objects.filter(pk=self.solicitud_id).update(estado='DESPACHADA')
-
-
-    ## Método para procesar movimientos de salida al cambiar el estado a DESPACHADA
-    class Envio(models.Model):
         TIPOS = (('DESPACHADA', 'Despacho al técnico'), ('RETORNO', 'Retorno al almacén'))
     
         solicitud = models.ForeignKey(Solicitud, on_delete=models.CASCADE, related_name='envios')
