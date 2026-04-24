@@ -1,9 +1,27 @@
 from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Solicitud, DetalleSolicitud, Envio
+from .models import Solicitud, DetalleSolicitud, Envio, RetornoParte
+from catalog.models import Parte
 
-# En operations/admin.py
+
+
+class RetornoParteForm(forms.ModelForm):
+    class Meta:
+        model = RetornoParte
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Importación interna para evitar errores de carga
+        from catalog.models import Parte 
+        
+        # Filtro de Solicitudes
+        self.fields['solicitud'].queryset = Solicitud.objects.all().order_by('-fecha_creacion')
+        
+        # Filtro de Partes
+        self.fields['parte'].queryset = Parte.objects.all().order_by('nombre')
+
 
 class DetalleSolicitudForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -55,6 +73,35 @@ class DetalleInline(admin.TabularInline):
         if obj and obj.estado in ['Entregada', 'Despachada']:
             return ['parte', 'cantidad', 'serial']
         return []
+
+
+
+@admin.action(description="Confirmar recepción física (Mover a Inventario Dañado)")
+def recibir_partes_accion(modeladmin, request, queryset):
+    count = 0
+    for obj in queryset:
+        if obj.estado == 'TRANSITO':
+            obj.confirmar_recepcion(request.user)
+            count += 1
+    modeladmin.message_user(request, f"Se han recibido {count} partes correctamente.")
+
+@admin.register(RetornoParte)
+class RetornoParteAdmin(admin.ModelAdmin):
+    form = RetornoParteForm # <--- Asignamos el formulario filtrado
+    list_display = ('serial_extraido', 'parte', 'get_ticket', 'tecnico', 'estado', 'fecha_registro')
+    list_filter = ('estado', 'tecnico')
+    search_fields = ('serial_extraido', 'solicitud__ticket_crm')
+    actions = [recibir_partes_accion]
+
+    # Método para mostrar el ticket de forma más limpia en la lista
+    def get_ticket(self, obj):
+        return obj.solicitud.ticket_crm
+    get_ticket.short_description = 'Ticket CRM'
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj and obj.estado == 'RECIBIDO':
+            return [f.name for f in self.model._meta.fields]
+        return ['fecha_registro', 'fecha_recepcion', 'almacenista']
 
 class EnvioInline(admin.TabularInline):
     model = Envio

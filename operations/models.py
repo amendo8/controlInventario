@@ -207,25 +207,54 @@ class Envio(models.Model):
                     )
 
 
+# Modelo para registrar los retornos de partes, especialmente para las serializadas que vienen dañadas o con discrepancias
 class RetornoParte(models.Model):
-    solicitud = models.ForeignKey('operations.Solicitud', on_delete=models.CASCADE)
+    ESTADOS_RETORNO = [
+        ('TRANSITO', 'En Tránsito (Técnico)'),
+        ('RECIBIDO', 'Recibido en Almacén'),
+        ('DISCREPANCIA', 'Error en Serial'),
+    ]
+
+    solicitud = models.ForeignKey(Solicitud, on_delete=models.CASCADE, related_name='retornos')
     parte = models.ForeignKey('catalog.Parte', on_delete=models.PROTECT)
-    serial_retirado = models.CharField(max_length=100)
-    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
-    estado = models.CharField(max_length=20, default='PENDIENTE')
+    serial_extraido = models.CharField(max_length=100, verbose_name="Serial Retirado")
+    tecnico = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='retornos_realizados')
+    estado = models.CharField(max_length=20, choices=ESTADOS_RETORNO, default='TRANSITO')
+    
+    # Datos de recepción
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    fecha_recepcion = models.DateTimeField(null=True, blank=True)
+    almacenista = models.ForeignKey('users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='retornos_verificados')
+    observaciones = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Retorno de Parte"
+        verbose_name_plural = "Retornos de Partes"
+
+    def __str__(self):
+        return f"{self.parte.nombre} - {self.serial_extraido} ({self.estado})"
 
     def confirmar_recepcion(self, usuario_almacen):
+        """
+        Este método hace la magia: al confirmar, crea el movimiento en el Kardex.
+        """
         from inventory.models import MovimientoKardex
-        # Generar entrada automática como pieza dañada
+        from django.utils.timezone import now
+        
+        # 1. Crear el movimiento de entrada en el almacén central
         MovimientoKardex.objects.create(
             parte=self.parte,
-            oficina=usuario_almacen.oficina,
+            oficina=usuario_almacen.oficina, # Se asume la oficina del que recibe
             tipo='ENTRADA',
             cantidad=1,
-            serial=self.serial_retirado,
+            serial=self.serial_extraido,
             usuario=usuario_almacen,
-            estado_parte='DAÑADO',
-            referencia=f"RETORNO-{self.solicitud.ticket_crm}"
+            estado_parte='DAÑADO', # <--- Clave para tu control de activos
+            referencia=f"RETORNO TICKET: {self.solicitud.ticket_crm}"
         )
+        
+        # 2. Actualizar el registro de retorno
         self.estado = 'RECIBIDO'
+        self.almacenista = usuario_almacen
+        self.fecha_recepcion = now()
         self.save()
