@@ -84,10 +84,15 @@ class DetalleSolicitud(models.Model):
     solicitud = models.ForeignKey(Solicitud, on_delete=models.CASCADE, related_name='detalles')
     parte = models.ForeignKey('catalog.Parte', on_delete=models.PROTECT)
     cantidad = models.PositiveIntegerField(default=1)
+    serial = models.CharField(max_length=100, 
+                              blank=True, 
+                              null=True,
+                              unique=False, 
+                              help_text="Solo para partes serializadas"
+                              )
 
     def __str__(self):
-        return f"{self.cantidad} x {self.parte.nombre}"
-
+        return f"{self.parte.nombre} (SN: {self.serial or 'N/A'})"
 
 ## Método para procesar movimientos de salida al cambiar el estado a DESPACHADA
 
@@ -115,46 +120,50 @@ class Envio(models.Model):
                     self.procesar_retorno_completo()
 
         def procesar_despacho(self):
-            """
-            Lógica para registrar los movimientos de salida (Caracas) 
-            y entrada (Barquisimeto) a través del Kardex.
-            """
 
             with transaction.atomic():
-                self.solicitud.refresh_from_db()
-                detalles = self.solicitud.detalles.all()
-                oficina_origen = self.solicitud.supervisor.oficina
-                oficina_destino = self.solicitud.tecnico.oficina
+                # 1. Forzamos la lectura fresca de la solicitud y sus relaciones
+                # Accedemos a través de self.solicitud porque estamos en la clase Envio
+                sol = self.solicitud 
+                
+                # 2. Validación Crítica: Verificamos que existan las oficinas
+                if not sol.supervisor or not sol.supervisor.oficina:
+                    raise ValueError(f"El supervisor {sol.supervisor} no tiene oficina asignada.")
+                if not sol.tecnico or not sol.tecnico.oficina:
+                    raise ValueError(f"El técnico {sol.tecnico} no tiene oficina asignada.")
+
+                oficina_origen = sol.supervisor.oficina
+                oficina_destino = sol.tecnico.oficina
+                detalles = sol.detalles.all()
 
                 for item in detalles:
-                    # --- 1. REGISTRAMOS SALIDA (ORIGEN) ---
-                    # Ya no buscamos inv_origen. El Signal lo gestionará.
+                    # --- 1. REGISTRAMOS SALIDA (CARACAS/ORIGEN) ---
                     MovimientoKardex.objects.create(
                         parte=item.parte,
                         oficina=oficina_origen,
                         tipo='SALIDA',
                         cantidad=item.cantidad,
-                        usuario=self.solicitud.tecnico,
-                        referencia=f"Ticket {self.solicitud.ticket_crm}",
-                        observaciones=f"Despacho automático hacia {oficina_destino}"
+                        serial=item.serial, # IMPORTANTE: Asegúrate de pasar el serial del detalle
+                        usuario=sol.supervisor, # El responsable de la salida es el supervisor
+                        referencia=f"Ticket {sol.ticket_crm}",
+                        observaciones=f"Despacho automático hacia {oficina_destino.nombre}"
                     )
 
-                    # --- 2. REGISTRAMOS ENTRADA (DESTINO) ---
-                    # El Signal creará el registro de Inventario en el destino si no existe.
+                    # --- 2. REGISTRAMOS ENTRADA (BARQUISIMETO/DESTINO) ---
                     MovimientoKardex.objects.create(
                         parte=item.parte,
                         oficina=oficina_destino,
                         tipo='ENTRADA',
                         cantidad=item.cantidad,
-                        usuario=self.solicitud.tecnico,
-                        referencia=f"Ticket {self.solicitud.ticket_crm}",
-                        observaciones=f"Entrada automática por recepción de {oficina_origen}"
+                        serial=item.serial, # IMPORTANTE: Asegúrate de pasar el serial del detalle
+                        usuario=sol.tecnico, # El responsable de la entrada es el técnico
+                        referencia=f"Ticket {sol.ticket_crm}",
+                        observaciones=f"Entrada automática por recepción de {oficina_origen.nombre}"
                     )
                 
-                # Actualizamos el estado de la solicitud
-                self.solicitud.estado = 'DESPACHADA'
-                # Usamos update_fields para evitar disparar señales innecesarias de la solicitud si no hace falta
-                self.solicitud.save(update_fields=['estado'])
+                # 3. Actualizamos el estado de la solicitud directamente
+                sol.estado = 'DESPACHADA'
+                sol.save(update_fields=['estado'])
 
         def procesar_retorno_completo(self):
             """Lógica para procesar la devolución de todas las partes del ticket"""

@@ -13,7 +13,7 @@ class Inventario(models.Model):
     
     serial = models.CharField(
         max_length=100, 
-        unique=True, 
+        unique=False, 
         null=True, 
         blank=True, 
         verbose_name="Número de Serial"
@@ -63,24 +63,86 @@ class MovimientoKardex(models.Model):
     observaciones = models.TextField(blank=True)
     fecha = models.DateTimeField(auto_now_add=True)
 
-    def save(self, *args, **kwargs):
-        # Esta es la lógica mágica:
-        from .models import Inventario
+    
+    # Validaciones personalizadas para asegurar la integridad de los datos según el tipo de parte (serializada o genérica)
+    def clean(self):
+        """
+        Validaciones lógicas antes de guardar en la base de datos.
+        """
+        super().clean()
+
+        # 1. Normalización del Serial (Limpieza de espacios y mayúsculas)
+        if self.serial:
+            self.serial = self.serial.strip().upper()
+
+        # 2. Lógica para PARTES CON SERIAL
+        if self.parte.tiene_serial:
+            # Una pieza con serial es una entidad única: cantidad siempre 1
+            if self.cantidad != 1:
+                raise ValidationError({
+                    'cantidad': f"La parte '{self.parte.nombre}' es serializada. "
+                                f"La cantidad en el movimiento debe ser exactamente 1."
+                })
+
+            # Si es una ENTRADA, verificamos que el serial no exista ya con stock
+            if self.tipo == 'ENTRADA' and self.serial:
+
+                from .models import Inventario
+                
+                # Buscamos si este serial ya tiene stock activo (> 0) en CUALQUIER oficina
+                existe_activo = Inventario.objects.filter(
+                    parte=self.parte,
+                    serial=self.serial,
+                    cant_disponible__gt=0
+                ).exists()
+
+                if existe_activo:
+                    raise ValidationError({
+                        'serial': f"El serial '{self.serial}' ya tiene stock activo en el sistema. "
+                                  f"No se puede duplicar la existencia de un activo serializado."
+                    })
+            
+            # --- BLOQUEO DE SALDO NEGATIVO ---
+            if self.tipo == 'SALIDA':
+                from .models import Inventario
+                
+                # Buscamos el stock actual en esa oficina para esa parte/serial
+                filtro = {
+                    'parte': self.parte,
+                    'oficina': self.oficina,
+                }
+                if self.serial:
+                    filtro['serial'] = self.serial
+                else:
+                    filtro['serial__isnull'] = True
+
+                inv_actual = Inventario.objects.filter(**filtro).first()
+                stock_disponible = inv_actual.cant_disponible if inv_actual else 0
+
+                if stock_disponible < self.cantidad:
+                    # Si no hay stock, lanzamos el error que detiene el guardado
+                    error_msg = (
+                        f"Saldo insuficiente en {self.oficina.nombre}. "
+                        f"Stock disponible: {stock_disponible}. "
+                        f"Cantidad solicitada: {self.cantidad}."
+                    )
+                    raise ValidationError({'cantidad': error_msg})
         
-        # 1. Buscamos o creamos el registro de Inventario (el saldo) automáticamente
-        inv, _ = Inventario.objects.get_or_create(
-            parte=self.parte,
-            oficina=self.oficina,
-            serial=self.serial if self.parte.tiene_serial else None
-        )
-        
-        # 2. Actualizamos el saldo del inventario antes de guardar el movimiento
-        if self.tipo == 'ENTRADA':
-            inv.cant_disponible += self.cantidad
+        # 3. Lógica para PARTES GENÉRICAS (Sin Serial)
         else:
-            inv.cant_disponible -= self.cantidad
-        
-        inv.save()
+            # Si el usuario escribió algo en serial por error, lo limpiamos
+            if self.serial:
+                self.serial = None
+            
+            # Validamos que la cantidad sea positiva
+            if self.cantidad <= 0:
+                raise ValidationError({
+                    'cantidad': "La cantidad para partes genéricas debe ser mayor a cero."
+                })
+
+    def save(self, *args, **kwargs):
+        # Forzamos la ejecución de clean() antes de guardar
+        self.full_clean()
         super().save(*args, **kwargs)
 
 
