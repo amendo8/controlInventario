@@ -106,9 +106,7 @@ class Envio(models.Model):
         fecha_envio = models.DateField(null=True, blank=True)
         fecha = models.DateTimeField(auto_now_add=True)
     
-        # Añadimos este campo para capturar el serial que viene de vuelta si es necesario
-        serial_devuelto = models.CharField(max_length=100, null=True, blank=True, help_text="Serial de la pieza dañada")
-
+        # Campo para registrar el serial devuelto en caso de partes con serial       
         def save(self, *args, **kwargs):
             is_new = self._state.adding
             super().save(*args, **kwargs)
@@ -207,3 +205,27 @@ class Envio(models.Model):
                         referencia=f"RETORNO-{self.solicitud.ticket_crm}",
                         observaciones=f"Almacén recibe pieza dañada/retorno. SN: {self.serial_devuelto}"
                     )
+
+
+class RetornoParte(models.Model):
+    solicitud = models.ForeignKey('operations.Solicitud', on_delete=models.CASCADE)
+    parte = models.ForeignKey('catalog.Parte', on_delete=models.PROTECT)
+    serial_retirado = models.CharField(max_length=100)
+    fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
+    estado = models.CharField(max_length=20, default='PENDIENTE')
+
+    def confirmar_recepcion(self, usuario_almacen):
+        from inventory.models import MovimientoKardex
+        # Generar entrada automática como pieza dañada
+        MovimientoKardex.objects.create(
+            parte=self.parte,
+            oficina=usuario_almacen.oficina,
+            tipo='ENTRADA',
+            cantidad=1,
+            serial=self.serial_retirado,
+            usuario=usuario_almacen,
+            estado_parte='DAÑADO',
+            referencia=f"RETORNO-{self.solicitud.ticket_crm}"
+        )
+        self.estado = 'RECIBIDO'
+        self.save()

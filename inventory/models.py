@@ -43,11 +43,25 @@ class Inventario(models.Model):
 # inventory/models.py
 
 class MovimientoKardex(models.Model):
-    TIPOS = (('ENTRADA', 'Entrada'), ('SALIDA', 'Salida'))
+    # tipo de operacion Entrada o Salida de parte
+    TIPOS = (('ENTRADA', 'Entrada'),
+              ('SALIDA', 'Salida'))
+    
+    # Estado de la parte, si es operativo, dañada, deseño
+    ESTADO_CHOICES = [
+        ('OPERATIVO', 'Operativo / Nuevo'),
+        ('DAÑADO', 'Dañado / Para Reparar'),
+        ('DESECHO', 'Desecho / Scrap'),
+    ]
     
     # En lugar de seleccionar un 'Inventario' existente:
     parte = models.ForeignKey('catalog.Parte', on_delete=models.CASCADE, null=True)
     oficina = models.ForeignKey('users.Oficina', on_delete=models.CASCADE, null=True)
+    estado_parte = models.CharField(
+        max_length=20, 
+        choices=ESTADO_CHOICES, 
+        default='OPERATIVO'
+    )
     
     tipo = models.CharField(max_length=10, choices=TIPOS)
     serial = models.CharField(max_length=100, null=True, blank=True)
