@@ -2,6 +2,8 @@ from PIL.Image import item
 from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from inventory.models import Inventario, MovimientoKardex
+from django.utils.timezone import now
+
 
 
 # procesar el movimiento de salida al cambiar el estado a DESPACHADA
@@ -94,10 +96,11 @@ class DetalleSolicitud(models.Model):
     def __str__(self):
         return f"{self.parte.nombre} (SN: {self.serial or 'N/A'})"
 
-## Método para procesar movimientos de salida al cambiar el estado a DESPACHADA
+
+# Clase para manejar despacho de partes.
 
 class Envio(models.Model):
-        TIPOS = (('DESPACHADA', 'Despacho al técnico'), ('RETORNO', 'Retorno al almacén'))
+        TIPOS = (('DESPACHADA', 'Despacho al técnico'),)
     
         solicitud = models.ForeignKey(Solicitud, on_delete=models.CASCADE, related_name='envios')
         tipo = models.CharField(max_length=20, choices=TIPOS)
@@ -114,8 +117,7 @@ class Envio(models.Model):
             if is_new:
                 if self.tipo == 'DESPACHADA':
                     self.procesar_despacho()
-                elif self.tipo == 'RETORNO':
-                    self.procesar_retorno_completo()
+                
 
         def procesar_despacho(self):
 
@@ -163,48 +165,7 @@ class Envio(models.Model):
                 sol.estado = 'DESPACHADA'
                 sol.save(update_fields=['estado'])
 
-        def procesar_retorno_completo(self):
-            """Lógica para procesar la devolución de todas las partes del ticket"""
-            from inventory.models import Inventario, MovimientoKardex
-            from django.db import transaction
-
-            detalles = self.solicitud.detalles.all()
-            oficina_tecnico = self.solicitud.tecnico.oficina
-            oficina_supervisor = self.solicitud.supervisor.oficina
-
-            with transaction.atomic():
-                for item in detalles:
-                    # 1. Determinamos cantidad y serial según el tipo de parte
-                    if item.parte.tiene_serial:
-                        if not self.serial_devuelto:
-                            raise ValueError(f"La parte {item.parte.nombre} requiere un serial para el retorno.")
-                        cant_mov = 1
-                    else:
-                        cant_mov = item.cantidad
-
-                    # 2. SALIDA DEL TÉCNICO (Barquisimeto)
-                    inv_tec = Inventario.objects.select_for_update().get(parte=item.parte, oficina=oficina_tecnico)
-                    MovimientoKardex.objects.create(
-                        inventario=inv_tec,
-                        tipo='SALIDA',
-                        cantidad=cant_mov,
-                        serial=self.serial_devuelto if item.parte.tiene_serial else None,
-                        referencia=f"RETORNO-{self.solicitud.ticket_crm}",
-                        observaciones=f"Técnico devuelve pieza {'dañada' if item.parte.tiene_serial else 'genérica'}"
-                    )
-
-                    # 3. ENTRADA AL SUPERVISOR (Caracas)
-                    inv_sup, _ = Inventario.objects.select_for_update().get_or_create(
-                        parte=item.parte, oficina=oficina_supervisor, defaults={'cant_disponible': 0}
-                    )
-                    MovimientoKardex.objects.create(
-                        inventario=inv_sup,
-                        tipo='ENTRADA',
-                        cantidad=cant_mov,
-                        serial=self.serial_devuelto if item.parte.tiene_serial else None,
-                        referencia=f"RETORNO-{self.solicitud.ticket_crm}",
-                        observaciones=f"Almacén recibe pieza dañada/retorno. SN: {self.serial_devuelto}"
-                    )
+        
 
 
 # Modelo para registrar los retornos de partes, especialmente para las serializadas que vienen dañadas o con discrepancias
@@ -238,10 +199,20 @@ class RetornoParte(models.Model):
         """
         Este método hace la magia: al confirmar, crea el movimiento en el Kardex.
         """
-        from inventory.models import MovimientoKardex
-        from django.utils.timezone import now
         
-        # 1. Crear el movimiento de entrada en el almacén central
+        
+        # 1. SALIDA del técnico (Él ya no es responsable)
+        MovimientoKardex.objects.create(
+            parte=self.parte,
+            oficina=self.tecnico.oficina, 
+            tipo='SALIDA',
+            cantidad=1,
+            serial=self.serial_extraido,
+            usuario=self.tecnico,
+            referencia=f"ENVIO RETORNO: {self.solicitud.ticket_crm}"
+        )
+
+        # 2. Crear el movimiento de entrada en el almacén central
         MovimientoKardex.objects.create(
             parte=self.parte,
             oficina=usuario_almacen.oficina, # Se asume la oficina del que recibe

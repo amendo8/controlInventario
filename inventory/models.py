@@ -167,22 +167,35 @@ class MovimientoKardex(models.Model):
 
 @receiver(post_save, sender=MovimientoKardex)
 def actualizar_inventario_desde_kardex(sender, instance, created, **kwargs):
-    """
-    Sincroniza el saldo de Inventario basándose en los movimientos del Kardex.
-    Maneja tanto partes serializadas como genéricas.
-    """
     if created:
-            from .models import Inventario
-            # Ya no usamos instance.inventario, usamos los campos directos del movimiento
+        from .models import Inventario
+        
+        es_serializada = getattr(instance.parte, 'tiene_serial', False)
+        
+        if es_serializada:
+                # 1. Para piezas ÚNICAS, buscamos solo por PARTE y SERIAL
+                # Ignoramos la oficina en la búsqueda para poder "moverla" de sitio
+                inv, _ = Inventario.objects.get_or_create(
+                    parte=instance.parte,
+                    serial=instance.serial,
+                    defaults={'oficina': instance.oficina, 'cant_disponible': 0}
+                )
+                # Actualizamos la oficina actual por si se movió de ubicación
+                inv.oficina = instance.oficina
+        else:
+            # 2. Para piezas GENÉRICAS, sí buscamos por PARTE y OFICINA
             inv, _ = Inventario.objects.get_or_create(
                 parte=instance.parte,
                 oficina=instance.oficina,
-                serial=instance.serial if (instance.parte and instance.parte.tiene_serial) else None
-            )
+                serial=None,
+                defaults={'cant_disponible': 0}
+                )
 
-            if instance.tipo == 'ENTRADA':
-                inv.cant_disponible += instance.cantidad
-            elif instance.tipo == 'SALIDA':
-                inv.cant_disponible -= instance.cantidad
-            
-            inv.save()
+        # 3. Aplicamos la lógica de suma/resta
+        if instance.tipo == 'ENTRADA':
+            inv.cant_disponible += instance.cantidad
+        elif instance.tipo == 'SALIDA':
+            # Validación de seguridad: no permitir stock negativo si quieres ser estricto
+            inv.cant_disponible -= instance.cantidad
+        
+        inv.save()

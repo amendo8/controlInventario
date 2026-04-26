@@ -17,10 +17,12 @@ class RetornoParteForm(forms.ModelForm):
         from catalog.models import Parte 
         
         # Filtro de Solicitudes
-        self.fields['solicitud'].queryset = Solicitud.objects.all().order_by('-fecha_creacion')
+        if 'solicitud' in self.fields:
+            self.fields['solicitud'].queryset = Solicitud.objects.all().order_by('-fecha_creacion')
         
+        if 'parte' in self.fields:
         # Filtro de Partes
-        self.fields['parte'].queryset = Parte.objects.all().order_by('nombre')
+            self.fields['parte'].queryset = Parte.objects.all().order_by('nombre')
 
 
 class DetalleSolicitudForm(forms.ModelForm):
@@ -98,10 +100,13 @@ class RetornoParteAdmin(admin.ModelAdmin):
         return obj.solicitud.ticket_crm
     get_ticket.short_description = 'Ticket CRM'
 
+    
     def get_readonly_fields(self, request, obj=None):
+        # Si el objeto ya existe (obj no es None) y ya fue RECIBIDO
         if obj and obj.estado == 'RECIBIDO':
-            return [f.name for f in self.model._meta.fields]
-        return ['fecha_registro', 'fecha_recepcion', 'almacenista']
+            # Bloqueamos todos los campos críticos para que no se altere la historia
+            return ['solicitud', 'parte', 'serial_extraido', 'tecnico', 'almacenista']
+        return super().get_readonly_fields(request, obj)
 
 class EnvioInline(admin.TabularInline):
     model = Envio
