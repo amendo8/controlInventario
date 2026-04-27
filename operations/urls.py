@@ -2,6 +2,8 @@ from django.urls import path
 from . import views
 from inventory import views as inventory_views
 
+app_name = 'operations'
+
 urlpatterns = [
     #vista home
     path('', views.home, name='home'),

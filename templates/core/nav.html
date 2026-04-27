@@ -4,7 +4,7 @@
         
         <div class="flex justify-between items-center">
             <div class="flex flex-col">
-                <a href="{% url 'home' %}" class="font-black text-xl uppercase tracking-tighter leading-none hover:text-blue-400 transition">
+                <a href="{% url 'operations:home' %}" class="font-black text-xl uppercase tracking-tighter leading-none hover:text-blue-400 transition">
                     ServiExpress
                 </a>
                 
@@ -29,9 +29,9 @@
 
             <div class="hidden md:flex items-center space-x-2">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'home' %}" class="px-3 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 transition">DASHBOARD</a>
+                    <a href="{% url 'operations:home' %}" class="px-3 py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 transition">DASHBOARD</a>
                     <a href="{% url 'lista_inventario' %}" class="px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition">INVENTARIO</a>
-                    <a href="{% url 'gestion_solicitudes' %}" class="px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition">TRANSACCIONES</a>
+                    <a href="{% url 'operations:gestion_solicitudes' %}" class="px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition">TRANSACCIONES</a>
                     <a href="{% url 'users:lista_usuarios' %}" class="px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-800 transition">USUARIOS</a>
                     
                     <form action="{% url 'logout' %}" method="post" class="ml-2">
