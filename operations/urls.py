@@ -14,4 +14,5 @@ urlpatterns = [
     path('despacho/', views.despacho, name='despacho'),
     path('solicitudes/', views.gestion_solicitudes, name='gestion_solicitudes'),
     path('inventarios/', inventory_views.lista_inventario, name='lista_inventario'),
+    path('kardex/', views.KardexListView.as_view(), name='kardex_list')
 ]

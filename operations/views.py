@@ -1,3 +1,5 @@
+from django.views.generic import ListView
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, F,OuterRef, Subquery, DecimalField
@@ -5,7 +7,7 @@ from django.utils import timezone
 from django.utils.timezone import now
 from django.contrib import messages
 
-from .models import Solicitud, DetalleSolicitud, Envio, RetornoParte
+from .models import Solicitud, DetalleSolicitud, RetornoParte
 from .forms import SolicitudForm, DetalleSolicitudForm, DetalleSolicitudFormSet, CambioEstatusForm, EnvioForm
 from inventory.models import Inventario, MovimientoKardex
 from catalog.models import Parte
@@ -336,3 +338,15 @@ def gestion_solicitudes(request):
         'partes_disponibles': partes_disponibles,
     })
 
+# Vista de clase para visualizar el Kardex
+class KardexListView(LoginRequiredMixin, ListView):
+    model = MovimientoKardex
+    template_name = 'operations/kardex_list.html'
+    context_object_name = 'movimientos'
+    paginate_by = 20  # Por si tienes miles de registros
+
+    def get_queryset(self):
+        # Traemos los datos optimizados y ordenados por lo más reciente
+        return MovimientoKardex.objects.select_related(
+            'parte', 'oficina', 'usuario'
+        ).order_by('-fecha')

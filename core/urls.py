@@ -20,10 +20,19 @@ from django.urls import path, include
 from django.conf.urls.static import static
 
 urlpatterns = [
+    #llama al admin para administrar base de datos
     path('admin/', admin.site.urls),
+    
+    #Utiliza las utilidades de django para el login, reset contraseña, etc
     path('accounts/', include('django.contrib.auth.urls')),
+    
+    #Da acceso al Dashboard
     path('', include('operations.urls')),
+    
+    #Maneja las partes
     path('inventarios/', include('inventory.urls')),
+    
+    #Maneja los usuarios, creacion, actualización,etc
     path('usuarios/', include('users.urls')),
   
 ]
