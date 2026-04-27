@@ -1,0 +1,86 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="p-6 min-h-screen bg-slate-50">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tight">Libro de Kardex</h2>
+            <p class="text-slate-500 font-medium">Registro cronológico de movimientos de inventario.</p>
+        </div>
+        <div class="flex gap-3">
+            <div class="bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm">
+                <span class="block text-[10px] uppercase font-bold text-slate-400">Total Movimientos</span>
+                <span class="text-xl font-black text-blue-600">{{ movimientos.count }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Fecha</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Parte / Oficina</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Operación</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Cantidad</th>
+                        <th class="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-widest">Costo Unit.</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Referencia/Usuario</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                    {% for m in movimientos %}
+                    <tr class="hover:bg-slate-50/50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500 font-mono">
+                            {{ m.fecha|date:"d/m/y" }}<br>
+                            <span class="text-[10px] text-slate-400">{{ m.fecha|date:"H:i" }}</span>
+                        </td>
+                        
+                        <td class="px-6 py-4">
+                            <div class="text-sm font-bold text-slate-800">{{ m.parte.nombre }}</div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-[10px] font-bold text-blue-500 uppercase">{{ m.oficina.nombre }}</span>
+                                {% if m.serial %}
+                                <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">SN: {{ m.serial }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 text-[10px] font-black uppercase rounded-lg 
+                                {% if m.tipo == 'ENTRADA' %} bg-emerald-100 text-emerald-700 
+                                {% else %} bg-rose-100 text-rose-700 {% endif %}">
+                                {{ m.get_tipo_display }}
+                            </span>
+                            <div class="text-[9px] text-slate-400 mt-1 italic">{{ m.get_estado_parte_display }}</div>
+                        </td>
+
+                        <td class="px-6 py-4 text-center">
+                            <span class="text-sm font-black {% if m.tipo == 'ENTRADA' %} text-emerald-600 {% else %} text-rose-600 {% endif %}">
+                                {% if m.tipo == 'ENTRADA' %}+{% else %}-{% endif %}{{ m.cantidad }}
+                            </span>
+                        </td>
+
+                        <td class="px-6 py-4 text-right">
+                            <div class="text-sm font-bold text-slate-700">${{ m.precio_unitario }}</div>
+                            <div class="text-[10px] text-slate-400">Total: ${{ m.precio_unitario|multiply:m.cantidad }}</div>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-xs font-bold text-slate-700">{{ m.usuario.get_full_name|default:m.usuario.username }}</div>
+                            <div class="text-[10px] text-slate-400 uppercase tracking-tighter">{{ m.referencia }}</div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-slate-400 italic">
+                            No hay movimientos registrados en el Kardex aún.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
