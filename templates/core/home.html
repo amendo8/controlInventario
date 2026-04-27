@@ -16,23 +16,35 @@
                 <!--Stock Disponible en almacen-->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-blue-600">
-                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Stock Disponible</p>
-                        <p class="text-4xl font-black text-slate-900">{{ total_piezas }}</p>
-                        <p class="text-[10px] text-slate-400 mt-2 font-bold italic">Total en todas las oficinas</p>
+                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Costo Inventario</p>
+                        <p class="text-4xl font-black text-slate-900">{{ total_valor|floatformat:2 }}</p>
+                        <p class="text-[10px] text-slate-400 mt-2 font-bold italic">Valor total en almacen</p>
                     </div>
 
-                    <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-red-500">
-                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Alertas Críticas</p>
-                        <p class="text-4xl font-black {% if alertas_criticas > 0 %}text-red-600 animate-pulse{% else %}text-slate-900{% endif %}">
-                            {{ alertas_criticas }}
+                    <div class="bg-white p-4 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-slate-600">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Solicitudes</p>
+                        <p class="text-2xl font-black text-slate-900">{{ pendientes }}</p>
+                        <p class="text-[9px] text-slate-400 mt-2 font-bold italic uppercase">Por atender</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-blue-500">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Despachadas</p>
+                        <p class="text-2xl font-black text-slate-900"> Cantidad partes: {{ despachadas|floatformat:0 }}</p>
+                        <p class="text-[9px] text-blue-400 mt-2 font-bold italic">En manos de técnicos</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-amber-500">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Retornos</p>
+                        <p class="text-2xl font-black text-slate-900">{{ retornos }}</p>
+                        <p class="text-[9px] text-amber-500 mt-2 font-bold italic uppercase">Pendientes por recibir</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-red-500">
+                        <p class="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Faltantes</p>
+                        <p class="text-2xl font-black {% if faltantes > 0 %}text-red-600 animate-pulse{% else %}text-slate-900{% endif %}">
+                            {{ faltantes }}
                         </p>
-                        <p class="text-[10px] text-red-400 mt-2 font-bold italic uppercase">Bajo stock mínimo</p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-2xl shadow-xl border border-slate-100 border-l-4 border-l-amber-500">
-                        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">En Tránsito</p>
-                        <p class="text-4xl font-black text-slate-900">{{ piezas_transito }}</p>
-                        <p class="text-[10px] text-slate-400 mt-2 font-bold italic">Pendientes por recibir</p>
+                        <p class="text-[9px] text-red-400 mt-2 font-bold italic uppercase">Sin stock disponible</p>
                     </div>
                 </div>
                 <!--Últimos movimientos del Kardex-->
@@ -57,8 +69,8 @@
                                 <tr class="hover:bg-blue-50/50 transition">
                                     <td class="px-6 py-4 text-xs font-medium text-slate-600">{{ mov.fecha|date:"d/m H:i" }}</td>
                                     <td class="px-6 py-4">
-                                        <p class="text-xs font-bold text-slate-900">{{ mov.inventario.parte.nombre }}</p>
-                                        <p class="text-[9px] text-slate-400 font-bold uppercase">{{ mov.inventario.oficina.nombre }}</p>
+                                        <p class="text-xs font-bold text-slate-900">{{ mov.parte.nombre }}</p>
+                                        <p class="text-[9px] text-slate-400 font-bold uppercase">{{ mov.oficina.nombre }}</p>
                                     </td>
                                     <td class="px-6 py-4">
                                         {% if mov.tipo == 'ENTRADA' %}
@@ -70,7 +82,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-6 py-4 text-xs font-black text-slate-700">{{ mov.cantidad }}</td>
-                                    <td class="px-6 py-4 text-xs font-black text-blue-600">{{ mov.saldo_nuevo }}</td>
+                                    <td class="px-6 py-4 text-xs font-black text-blue-600">{{ mov.referencia|default:"---" }}</td>
                                 </tr>
                                 {% empty %}
                                 <tr>

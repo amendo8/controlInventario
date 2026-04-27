@@ -1,4 +1,5 @@
 
+from decimal import Decimal
 from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from django.db.models import F
@@ -155,12 +156,32 @@ class MovimientoKardex(models.Model):
                 })
 
     def save(self, *args, **kwargs):
-        # Forzamos la ejecución de clean() antes de guardar
-        self.full_clean()
-        super().save(*args, **kwargs)
+        """
+        Sobrescribimos el save para que el precio unitario se herede
+        del último registro conocido si no se especifica uno nuevo.
+        """
+        # 1. Si el movimiento no trae precio (ej. un traslado o salida)
+        if not self.precio_unitario:
+            # Buscamos el último movimiento de esta parte que SÍ tenga precio > 0
+            # Usamos '-id' o '-fecha' para asegurar que es el más reciente
+            ultimo_movimiento = MovimientoKardex.objects.filter(
+                parte=self.parte,
+                precio_unitario__gt=0
+            ).order_by('-id').first()
+            
+            if ultimo_movimiento:
+                # Heredamos el precio del último lote comprado o registrado
+                self.precio_unitario = ultimo_movimiento.precio_unitario
+            else:
+                # Si es la primera vez que entra la pieza y no pusieron precio, 
+                # lo dejamos en 0 para evitar errores en cálculos
+                self.precio_unitario = Decimal('0.00')
+
+        # 2. Ejecutamos el guardado real en la base de datos
+        super(MovimientoKardex, self).save(*args, **kwargs)
 
 
-# Señal para el Punto de Reorden
+
 
 
 ########################################################################################

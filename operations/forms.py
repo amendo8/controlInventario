@@ -1,4 +1,5 @@
 from django import forms
+from django.utils import timezone
 from django.forms import modelformset_factory
 from .models import Solicitud, DetalleSolicitud, Envio
 
@@ -48,6 +49,11 @@ class EnvioForm(forms.ModelForm):
                 'class': 'text-xs border border-slate-200 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none'
             }),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super(EnvioForm, self).__init__(*args, **kwargs)
+        # Asigna la fecha de hoy por defecto al campo fecha_envio
+        self.fields['fecha_envio'].initial = timezone.now().date()
 
 class AprobacionSupervisorForm(forms.Form):
     """Formulario para que el supervisor autorice y comente"""
@@ -60,4 +66,4 @@ class AprobacionSupervisorForm(forms.Form):
         required=True,
         label="Observación del Supervisor"
     )
-    # Usamos un ChoiceField oculto o botones en el HTML para definir la acción
+    

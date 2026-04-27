@@ -1,11 +1,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Sum, F,OuterRef, Subquery, DecimalField
 from django.utils import timezone
 from django.utils.timezone import now
 from django.contrib import messages
 
-from .models import Solicitud, DetalleSolicitud
+from .models import Solicitud, DetalleSolicitud, Envio, RetornoParte
 from .forms import SolicitudForm, DetalleSolicitudForm, DetalleSolicitudFormSet, CambioEstatusForm, EnvioForm
 from inventory.models import Inventario, MovimientoKardex
 from catalog.models import Parte
@@ -22,26 +22,76 @@ TRANSITIONS = {
 
 
 # Vista de home con KPIs y últimos movimientos del Kardex
+
+
 @login_required
 def home(request):
-    # 1. KPIs Principales
-    total_piezas = Inventario.objects.aggregate(total=Sum('cant_disponible'))['total'] or 0
-    #alertas_criticas = AlertaInventario.objects.filter(leida=False, nivel='CRITICAL').count()
-    piezas_transito = Inventario.objects.aggregate(total=Sum('cant_en_transito'))['total'] or 0
+       
     
-    # 2. Últimos movimientos del Kardex para la tabla
-    ultimos_movimientos = MovimientoKardex.objects.select_related(
-        'inventario__parte', 'inventario__oficina', 'usuario'
-    ).order_by('-fecha')[:5]
+    ultimo_precio_kardex = MovimientoKardex.objects.filter(
+        parte=OuterRef('parte'),
+        precio_unitario__gt=0
+    ).order_by('-id') # Tomamos el último registro ingresado
+    
+    ultimo_precio_subquery = MovimientoKardex.objects.filter(
+        parte=OuterRef('parte'),
+        precio_unitario__gt=0
+    ).order_by('-id').values('precio_unitario')[:1]
+    
+    pendientes = Solicitud.objects.filter(estado='PENDIENTE').count() # Solo las que están abiertas de atención
+
+    # 2. Solicitudes despachadas (Usando el modelo Envio que dio el error)
+    # Como no tienes "instalado" en Envio, contamos los envíos realizados
+    despachadas = Solicitud.objects.filter(estado='DESPACHADA').count() # O puedes contar envíos con tipo 'salida' si lo prefieres: Envio.objects.filter(tipo='salida').count() 
+
+    # 3. Retornos pendientes (Lo que el técnico debe devolver)
+    # Filtramos los retornos que aún están en 'TRANSITO'
+    retornos = RetornoParte.objects.filter(estado='RESUELTO').count()
+
+    # 4. Piezas que no hay en el almacen (Faltantes)
+    # Buscamos en el Inventario registros con cantidad cero o menos
+    faltantes = Inventario.objects.filter(cant_disponible__lte=0).count()
+
+    # 5. Costo Total del Inventario
+    # Usando los campos que confirmamos en el paso anterior
+    
+    valor_despachado = DetalleSolicitud.objects.filter(
+        solicitud__estado='DESPACHADO'
+    ).annotate(
+        precio_fijo=Subquery(ultimo_precio_subquery, output_field=DecimalField())
+    ).aggregate(
+        total=Sum(F('cantidad') * F('precio_fijo'), output_field=DecimalField())
+    )['total'] or 0
+    
+    total_valor = Inventario.objects.annotate(
+        ultimo_precio=Subquery(
+            ultimo_precio_kardex.values('precio_unitario')[:1],
+            output_field=DecimalField()
+        )
+    ).aggregate(
+        total=Sum(F('cant_disponible') * F('ultimo_precio'), output_field=DecimalField())
+    )['total'] or 0
+
+    # Calculamos el valor monetario de lo que está "En manos de técnicos"
+    # Accedemos a los detalles de las solicitudes que están en estado DESPACHADO
+    valor_despachado = DetalleSolicitud.objects.filter(
+        solicitud__estado='DESPACHADA'
+    ).aggregate(
+        total=Sum(F('cantidad') * F('parte__movimientokardex__precio_unitario'), distinct=False)
+    )['total'] or 0
 
     context = {
-        'total_piezas': total_piezas,
-        #'alertas_criticas': alertas_criticas,
-        'piezas_transito': piezas_transito,
-        'ultimos_movimientos': ultimos_movimientos,
+        'pendientes':pendientes,
+        'despachadas': despachadas,
+        'retornos': retornos,
+        'faltantes': faltantes,
+        'total_valor': total_valor,
+        'valor_despachado': valor_despachado,
+        'ultimos_movimientos': MovimientoKardex.objects.select_related('parte', 'oficina').order_by('-fecha')[:10]
     }
-    
     return render(request, 'core/home.html', context)
+
+
 
 @login_required
 def aprobar_solicitud(request, solicitud_id):
