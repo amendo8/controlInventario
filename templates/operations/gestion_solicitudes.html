@@ -9,12 +9,12 @@
             <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tighter">Transacciones</h1>
             <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Control de solicitudes y flujo de partes</p>
         </div>
-        <a href="{% url 'despacho' %}" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all">
+        <a href="{% url 'operations:despacho' %}" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all">
             Vista de Despacho
         </a>
     </div>
     <div class="mb-4">
-        <a href="{% url 'home' %}" class="inline-flex items-center text-[10px] font-black text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest group">
+        <a href="{% url 'operations:home' %}" class="inline-flex items-center text-[10px] font-black text-slate-400 hover:text-blue-600 transition-colors uppercase tracking-widest group">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
