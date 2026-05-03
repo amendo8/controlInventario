@@ -40,10 +40,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     # Local apps
-    'users',
-    'catalog',
-    'inventory',
-    'operations',
+    'users.apps.UsersConfig',  # Usamos la clase personalizada para registrar señales
+    'catalog.apps.CatalogConfig',  # Usamos la clase personalizada para registrar señales
+    'inventory.apps.InventoryConfig',  # Usamos la clase personalizada para registrar señales
+    'operations.apps.OperationsConfig',  # Usamos la clase personalizada para registrar señales
 
 ]
 
@@ -63,10 +63,10 @@ ROOT_URLCONF = 'core.urls'
 AUTH_USER_MODEL = 'users.User'
 
 # Redirección después del logout
-LOGOUT_REDIRECT_URL = 'home'
+LOGOUT_REDIRECT_URL = 'operations:home'
 
 # Indica a dónde ir después de loguearse con éxito
-LOGIN_REDIRECT_URL = 'home'
+LOGIN_REDIRECT_URL = 'operations:home'
 
 # Indica a dónde ir después de cerrar sesión
 LOGOUT_REDIRECT_URL = 'login'
